@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>⚽ 축구 보드판 v2</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -50,6 +50,92 @@
     .play-badge.low  { background:#16a34a; }
     .play-badge.mid  { background:#f59e0b; }
     .play-badge.high { background:#dc2626; }
+    /* ── 포지션 뱃지 ── */
+    .pos-badge {
+      display:inline-block;
+      font-size:10px; font-weight:700;
+      padding:0; margin-left:4px;
+      vertical-align:middle; line-height:1.4;
+      background:none; border-radius:0;
+    }
+    .pos-gk  { color:#111; }
+    .pos-df  { color:#111; }
+    .pos-mf  { color:#111; }
+    .pos-fw  { color:#111; }
+    .pos-none{ color:#9ca3af; }
+
+    /* ── 출석 체크 애니메이션 ── */
+    @keyframes slideToRight {
+      0%   { transform: translateX(0);    opacity: 1; }
+      80%  { transform: translateX(120%); opacity: 0.3; }
+      100% { transform: translateX(120%); opacity: 0; }
+    }
+    .slide-right {
+      animation: slideToRight 0.5s ease-in forwards;
+      pointer-events: none;
+    }
+    @keyframes fadeInLeft {
+      0%   { transform: translateX(-30px); opacity: 0; }
+      100% { transform: translateX(0);     opacity: 1; }
+    }
+    .fade-in-left {
+      animation: fadeInLeft 0.4s ease-out forwards;
+    }
+
+    /* ── 휴식 카드 ── */
+    .player-card.resting {
+      position: relative;
+      border-color: #9ca3af !important;
+      background: #f3f4f6 !important;
+    }
+    .player-card.resting::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(156, 163, 175, 0.55);
+      border-radius: 13px;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .player-card.resting .player-name,
+    .player-card.resting .text-success,
+    .player-card.resting .text-danger,
+    .player-card.resting .play-badge,
+    .player-card.resting .pos-badge {
+      opacity: 0.45;
+    }
+    .rest-badge {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2;
+      background: #6b7280; color: #fff;
+      font-size: 13px; font-weight: 900;
+      padding: 4px 14px; border-radius: 20px;
+      letter-spacing: 2px; pointer-events: none;
+    }
+
+    /* ── 길게 누르기 ── */
+    @keyframes slideToLeft {
+      0%   { transform: translateX(0);     opacity: 1; }
+      80%  { transform: translateX(-120%); opacity: 0.3; }
+      100% { transform: translateX(-120%); opacity: 0; }
+    }
+    .slide-left {
+      animation: slideToLeft 0.5s ease-in forwards;
+      pointer-events: none;
+    }
+    .long-press-bar {
+      position: absolute;
+      bottom: 0; left: 0;
+      height: 3px;
+      background: #dc2626;
+      border-radius: 0 0 13px 13px;
+      width: 0%;
+      transition: width 3s linear;
+      z-index: 3;
+    }
+    .long-press-bar.active { width: 100%; }
 
     /* ── 스킬 로고 ── */
     .skill-logo { display:inline-block; width:52px; text-align:center; font-size:11px; font-weight:900; line-height:1; vertical-align:middle; }
@@ -215,22 +301,57 @@
 
 <!-- ══════════ 탭: 보드 ══════════ -->
 <div id="tab-board" class="tab-content-panel">
+
+  <!-- 미리보기 배너 -->
+  <div id="board-preview-header" style="display:none;"
+       class="d-flex align-items-center justify-content-center gap-3 py-2 border-bottom"
+       style="background:#fefce8; position:sticky; top:0; z-index:50;">
+    <span id="preview-banner-text" class="fw-bold" style="color:#92400e;">
+      ⚠️ 미리보기 모드 — 아직 저장되지 않았습니다
+    </span>
+    <button id="preview-confirm-btn" class="btn btn-success px-4"
+            onclick="confirmBoard()">✅ 확인 (저장)</button>
+    <button id="preview-cancel-btn" class="btn btn-outline-secondary"
+            onclick="cancelPreview()">취소</button>
+  </div>
+
   <div class="container-fluid py-3">
+    <!-- 보드 상단 컨트롤 -->
     <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
       <div>
         <h5 class="m-0 fw-bold" id="board-title">보드(한 팀)</h5>
         <small class="text-muted">선수 칩을 드래그하여 포지션을 변경할 수 있습니다.</small>
       </div>
       <div class="d-flex gap-2 flex-wrap align-items-center">
-        <select id="board-game-select" class="form-select" style="width:auto;font-size:14px;"
-                onchange="renderBoardByGame()"></select>
-        <button class="btn btn-outline-secondary"
-                onclick="requireAdmin('초기 배치로 되돌립니다.', doResetLayout)">초기배치 재설정</button>
+        <select id="board-game-select" class="form-select"
+                style="width:auto;font-size:14px;" onchange="renderBoardByGame()"></select>
         <button class="btn btn-success"
-                onclick="requireAdmin('새로운 경기를 생성합니다.', doNextGame)">🔄 새로운경기</button>
+                onclick="requireAdmin('새로운 경기를 생성합니다.', doNextGame)">
+          🔄 새로운경기
+        </button>
       </div>
     </div>
-    <div id="board-area"></div>
+
+    <!-- 보드 + 우측 대기명단 (항상 이 구조) -->
+    <div class="d-flex gap-3" id="board-flex-wrap">
+      <!-- 축구장 영역 -->
+      <div id="board-area" style="flex:1; min-width:0;"></div>
+
+      <!-- 대기명단 패널 (미리보기 시 표시) -->
+      <div id="bench-panel" style="display:none; width:210px; flex-shrink:0;">
+        <div class="fw-bold mb-2" style="font-size:13px;">
+          <span style="display:inline-block;width:10px;height:10px;
+                       background:#16a34a;border-radius:50%;margin-right:4px;"></span>
+          대기 명단
+        </div>
+        <div id="bench-list"
+             style="border:2px dashed #16a34a; border-radius:12px;
+                    padding:6px; overflow-y:auto;
+                    max-height:calc(100vh - 260px); min-height:200px;">
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -399,6 +520,8 @@ const DB = {
   set attendance(v){ localStorage.setItem('sb_attendance', JSON.stringify(v)); },
   set matches(v)   { localStorage.setItem('sb_matches',    JSON.stringify(v)); },
   set password(v)  { localStorage.setItem('sb_password',   v); },
+  get resting()    { return JSON.parse(localStorage.getItem('sb_resting')  || '[]'); },
+  set resting(v)   { localStorage.setItem('sb_resting', JSON.stringify(v)); },
 
   nextId(arr) { return arr.length ? Math.max(...arr.map(x => x.id)) + 1 : 1; },
 };
@@ -453,11 +576,13 @@ function getAppsMap(sessionId) {
 
 // 출석 후보 정렬: games_played 오름차순 → checkin_time 오름차순
 function getCandidates(sessionId) {
+  const resting = DB.resting;
   const att     = DB.attendance.filter(a => a.session_id === sessionId);
   const appsMap = getAppsMap(sessionId);
   return att.map(a => {
     const p = DB.players.find(x => x.id === a.player_id);
     if (!p) return null;
+    if (resting.includes(p.id)) return null; // 휴식 선수 제외
     return {
       player:       p,
       checkin_time: a.checkin_time,
@@ -510,7 +635,7 @@ function assignPositions(cands) {
   if (result.length && !result.find(([, p]) => p === 'GK')) {
     result[0][1] = 'GK';
   }
-  return result.slice(0, 11);
+  return result; // 있는 인원만 반환, 중복 없음
 }
 
 // 로테이션 선발 (방식 B) — 직전 경기 배제 + 나이 어린 순 보충
@@ -532,13 +657,7 @@ function selectFinal11(cands, prevIds) {
   const bench    = cands.filter(c =>  prevIds.has(c.player.id)).sort(cmp);
   let selected   = [...field];
   if (selected.length < 11) selected = [...selected, ...bench.slice(0, 11 - selected.length)];
-  const allSorted = [...cands].sort(cmp);
-  while (selected.length < 11) {
-    for (const c of allSorted) {
-      if (selected.length >= 11) break;
-      selected.push(c);
-    }
-  }
+  // 인원 부족 시 중복 없이 있는 인원만 사용
   return assignPositions(selected.slice(0, 11));
 }
 
@@ -699,8 +818,8 @@ function buildChipsHtml(assignments, players, side, teamClass) {
   }).join('');
 }
 
-function renderBoard(match) {
-  const area    = document.getElementById('board-area');
+function renderBoard(match, areaId) {
+  const area    = document.getElementById(areaId || 'board-area');
   const players = DB.players;
 
   if (!match) {
@@ -710,8 +829,10 @@ function renderBoard(match) {
   }
 
   const isScrimmage = match.match_type === 'SCRIMMAGE';
-  document.getElementById('board-title').textContent =
-    `보드(${isScrimmage ? '자체게임' : '한 팀'}) · ${match.game_no}번 ${match.event_flavor || ''}`;
+  if (match.game_no > 0) {
+    document.getElementById('board-title').textContent =
+      `보드(${isScrimmage ? '자체게임' : '한 팀'}) · ${match.game_no}${match.match_type === 'SCRIMMAGE' ? '자체게임' : '경기'} ${match.event_flavor || ''}`;
+  }
 
   const teams = match.teams || [];
   const blue  = teams.find(t => t.team_label === 'BLUE');
@@ -719,10 +840,10 @@ function renderBoard(match) {
 
   let chipsHtml = '';
   if (isScrimmage) {
-    chipsHtml += blue  ? buildChipsHtml(blue.assignments,  players, 'left',  'chip-blue')  : '';
-    chipsHtml += white ? buildChipsHtml(white.assignments, players, 'right', 'chip-white') : '';
+    chipsHtml += blue  ? buildChipsHtmlDraggable(blue.assignments,  players, 'left',  'chip-blue')  : '';
+    chipsHtml += white ? buildChipsHtmlDraggable(white.assignments, players, 'right', 'chip-white') : '';
   } else {
-    chipsHtml = blue ? buildChipsHtml(blue.assignments, players, 'left', '') : '';
+    chipsHtml = blue ? buildChipsHtmlDraggable(blue.assignments, players, 'left', '') : '';
   }
 
   const badge = isScrimmage
@@ -730,7 +851,7 @@ function renderBoard(match) {
     : '';
 
   area.innerHTML = `${badge}<div class="pitch-wrap" id="pitchWrap">${FIELD_SVG}${chipsHtml}</div>`;
-  document.querySelectorAll('.player-chip').forEach(initDrag);
+  area.querySelectorAll('.player-chip').forEach(initDrag);
 }
 
 function renderBoardByGame() {
@@ -745,7 +866,7 @@ function refreshBoardSelect(targetGameNo) {
   const ms   = DB.matches.filter(m => m.session_id === sess.id).sort((a,b) => b.game_no - a.game_no);
   const sel  = document.getElementById('board-game-select');
   sel.innerHTML = ms.map(m =>
-    `<option value="${m.game_no}">${m.game_no}번 (${m.match_type === 'SCRIMMAGE' ? '자체게임' : '경기'})</option>`
+    `<option value="${m.game_no}">${m.game_no}${m.match_type === 'SCRIMMAGE' ? '자체게임' : '경기'}</option>`
   ).join('');
   const target = targetGameNo || (ms.length ? ms[0].game_no : null);
   if (target) sel.value = target;
@@ -780,14 +901,8 @@ function initDrag(chip) {
     if (!dragging) return;
     dragging = false;
     chip.classList.remove('dragging');
-    const xPct   = parseFloat(chip.style.left);
-    const ZONES_L = [{pos:'GK',maxX:15},{pos:'DF',maxX:28},{pos:'MF',maxX:41},{pos:'FW',maxX:100}];
-    const ZONES_R = [{pos:'FW',maxX:43},{pos:'MF',maxX:57},{pos:'DF',maxX:72},{pos:'GK',maxX:100}];
-    const zones  = side === 'right' ? ZONES_R : ZONES_L;
-    const newPos = (zones.find(z => xPct <= z.maxX) || zones[zones.length - 1]).pos;
-    chip.querySelector('small').firstChild.textContent = newPos + ' ';
-    chip.classList.toggle('gk-chip', newPos === 'GK');
-    chip.dataset.pos = newPos;
+    // 위치는 chip.style.left/top 에 반영됨 — 포지션 자동 변경 없음
+    updateFormationDisplay();
   }
 
   chip.addEventListener('mousedown',  e => { e.preventDefault(); start(e.clientX, e.clientY); });
@@ -798,25 +913,61 @@ function initDrag(chip) {
   document.addEventListener('touchend',   () => end());
 }
 
-function doResetLayout() {
-  document.querySelectorAll('.player-chip').forEach(chip => {
-    chip.style.left = chip.dataset.initL + '%';
-    chip.style.top  = chip.dataset.initT + '%';
-    const origPos   = chip.dataset.pos;
-    chip.querySelector('small').firstChild.textContent = origPos + ' ';
-    chip.classList.toggle('gk-chip', origPos === 'GK');
-  });
-}
-
 // ================================================================
 // ===== 출석 탭 UI =====
 // ================================================================
 const collator = new Intl.Collator('ko-KR');
 
+function speakWelcome() {
+  if ('speechSynthesis' in window) {
+    const utter = new SpeechSynthesisUtterance('반갑습니다');
+    utter.lang  = 'ko-KR';
+    utter.rate  = 1.0;
+    utter.pitch = 1.2;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utter);
+  } else {
+    try {
+      const ctx   = new (window.AudioContext || window.webkitAudioContext)();
+      const notes = [523, 659, 784];
+      notes.forEach((freq, i) => {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.2);
+        osc.start(ctx.currentTime + i * 0.12);
+        osc.stop(ctx.currentTime  + i * 0.12 + 0.2);
+      });
+    } catch(e) {}
+  }
+}
+
 function playBadgeHtml(cnt) {
   if (!cnt) return '';
   const cls = cnt <= 2 ? 'low' : cnt <= 4 ? 'mid' : 'high';
   return `<span class="play-badge ${cls}">${cnt}회</span>`;
+}
+
+function posBadgeHtml(pos) {
+  if (!pos) return '';
+  const cls = {
+    GK: 'pos-gk', DF: 'pos-df',
+    MF: 'pos-mf', FW: 'pos-fw'
+  }[pos] || 'pos-none';
+  return `<span class="pos-badge ${cls}">${pos}</span>`;
+}
+
+function toggleResting(playerId) {
+  let resting = DB.resting;
+  const idx   = resting.indexOf(playerId);
+  if (idx >= 0) resting.splice(idx, 1);
+  else          resting.push(playerId);
+  DB.resting = resting;
+  renderAttendance();
 }
 
 function renderAttendance() {
@@ -842,7 +993,7 @@ function renderAttendance() {
     card.className = 'player-card';
     card.dataset.id = p.id;
     card.innerHTML = `
-      <div class="player-name">${p.name}</div>
+      <div class="player-name">${p.name}${posBadgeHtml(p.pos1)}</div>
       <div class="d-flex align-items-center justify-content-between">
         <span class="badge bg-light text-dark">${skillLogoHtml(p.skill_grade)}</span>
         <span class="text-primary" style="font-size:14px;">출석</span>
@@ -860,20 +1011,67 @@ function renderAttendance() {
       return new Date(attMap[a.id].checkin_time) - new Date(attMap[b.id].checkin_time);
     });
 
+  const restingSet = new Set(DB.resting);
+
   for (const p of attPlayers) {
-    const cnt  = appsMap[p.id] || 0;
-    const time = new Date(attMap[p.id].checkin_time).toLocaleTimeString('ko-KR');
-    const card = document.createElement('div');
-    card.className = 'player-card attended';
+    const cnt       = appsMap[p.id] || 0;
+    const time      = new Date(attMap[p.id].checkin_time).toLocaleTimeString('ko-KR');
+    const isResting = restingSet.has(p.id);
+    const card      = document.createElement('div');
+    card.className  = `player-card attended${isResting ? ' resting' : ''}`;
     card.dataset.id   = p.id;
     card.dataset.apps = cnt;
+    card.style.position = 'relative';
     card.innerHTML = `
-      <div class="player-name">${p.name}${playBadgeHtml(cnt)}</div>
+      <div class="player-name">${p.name}${posBadgeHtml(p.pos1)}${playBadgeHtml(cnt)}</div>
       <div class="d-flex align-items-center justify-content-between flex-wrap gap-1">
         <span class="text-success" style="font-size:12px;">출석 ${time}</span>
         <span class="text-danger" style="font-size:14px;">해제</span>
-      </div>`;
-    card.addEventListener('click', () => toggleAttendance(p.id));
+      </div>
+      ${isResting ? '<div class="rest-badge">휴식</div>' : ''}`;
+
+    // 길게 누르기 진행 바
+    const bar = document.createElement('div');
+    bar.className = 'long-press-bar';
+    card.appendChild(bar);
+
+    let pressTimer  = null;
+    let longPressed = false;
+
+    function startPress() {
+      longPressed = false;
+      bar.classList.remove('active');
+      void bar.offsetWidth; // reflow
+      bar.classList.add('active');
+      pressTimer = setTimeout(() => {
+        longPressed = true;
+        card.classList.add('slide-left');
+        setTimeout(() => {
+          const s2  = getOrCreateSession();
+          let att2  = DB.attendance;
+          att2 = att2.filter(a => !(a.session_id === s2.id && a.player_id === p.id));
+          DB.attendance = att2;
+          DB.resting = DB.resting.filter(id => id !== p.id);
+          renderAttendance();
+        }, 450);
+      }, 3000);
+    }
+    function cancelPress() {
+      if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+      bar.classList.remove('active');
+      bar.style.transition = 'none';
+      bar.style.width = '0%';
+      setTimeout(() => { bar.style.transition = 'width 3s linear'; }, 50);
+    }
+
+    card.addEventListener('click',       () => toggleResting(p.id));
+    card.addEventListener('mousedown',   startPress);
+    card.addEventListener('mouseup',     cancelPress);
+    card.addEventListener('mouseleave',  cancelPress);
+    card.addEventListener('touchstart',  e => { e.preventDefault(); startPress(); }, { passive: false });
+    card.addEventListener('touchend',    () => { if (!longPressed) toggleResting(p.id); cancelPress(); });
+    card.addEventListener('touchcancel', cancelPress);
+
     attList.appendChild(card);
   }
 
@@ -887,35 +1085,89 @@ function toggleAttendance(playerId) {
   const idx  = att.findIndex(a => a.session_id === sess.id && a.player_id === playerId);
   if (idx >= 0) {
     att.splice(idx, 1);
+    DB.attendance = att;
+    renderAttendance();
   } else {
-    att.push({ id: DB.nextId(att), session_id: sess.id, player_id: playerId, checkin_time: new Date().toISOString() });
+    // 출석 추가: 슬라이드 애니메이션 + 소리
+    const cardEl = document.querySelector(`.player-card[data-id="${playerId}"]`);
+    if (cardEl) {
+      cardEl.classList.add('slide-right');
+      speakWelcome();
+      setTimeout(() => {
+        att.push({ id: DB.nextId(att), session_id: sess.id, player_id: playerId, checkin_time: new Date().toISOString() });
+        DB.attendance = att;
+        renderAttendance();
+        setTimeout(() => {
+          const newCard = document.querySelector(`#att-list .player-card[data-id="${playerId}"]`);
+          if (newCard) newCard.classList.add('fade-in-left');
+        }, 50);
+      }, 450);
+    } else {
+      att.push({ id: DB.nextId(att), session_id: sess.id, player_id: playerId, checkin_time: new Date().toISOString() });
+      DB.attendance = att;
+      renderAttendance();
+    }
   }
-  DB.attendance = att;
-  renderAttendance();
 }
 
 // ================================================================
-// ===== 경기 생성 =====
+// ===== 경기 생성 (미리보기) =====
 // ================================================================
+
+// 미리보기 상태
+let _previewMatch     = null;  // 임시 경기 데이터 (DB 저장 전)
+let _previewType      = null;  // 'INTERNAL' | 'SCRIMMAGE'
+let _previewConfirmed = false;
+
 function doNextGame() {
   const sess = getOrCreateSession();
-  if (DB.attendance.filter(a => a.session_id === sess.id).length < 11) {
-    alert('출석 인원이 11명 미만입니다.'); return;
+  const activeCands = getCandidates(sess.id);
+  if (activeCands.length < 1) {
+    alert('경기 가능한 인원이 없습니다.\n(출석 인원을 확인하거나 휴식 해제 후 다시 시도해주세요.)');
+    return;
   }
-  const cands   = getCandidates(sess.id);
+  if (activeCands.length < 11) {
+    const ok = confirm(
+      `⚠️ 경기 가능 인원이 ${activeCands.length}명입니다.\n\n` +
+      `11명이 부족하지만 현재 인원(${activeCands.length}명)으로만 구성합니다.\n` +
+      `중복 없이 진행하시겠습니까?`
+    );
+    if (!ok) return;
+  }
+  const cands   = activeCands;
   const prevIds = getPrevPlayerIds(sess.id, 'INTERNAL');
   const team    = selectFinal11(cands, prevIds);
-
-  const posCnt = {};
+  const posCnt  = {};
   team.forEach(([, pos]) => { posCnt[pos] = (posCnt[pos] || 0) + 1; });
-  const df = posCnt.DF || 4, mf = posCnt.MF || 4, fw = posCnt.FW || 2;
+  const df = posCnt.DF||4, mf = posCnt.MF||4, fw = posCnt.FW||2;
 
-  const match = saveMatchToDB(sess.id, [
-    { team_label:'BLUE', side:'A', assignments: team.map(([c, pos]) => ({ player_id:c.player.id, assigned_position:pos })) }
-  ], 'INTERNAL', [df, mf, fw]);
+  _previewConfirmed = false;
+  _previewType  = 'INTERNAL';
+  _previewMatch = {
+    id: -1, session_id: sess.id, game_no: -1,
+    match_type: 'INTERNAL',
+    event_flavor: `FORM:${df}-${mf}-${fw}`,
+    created_at: new Date().toISOString(),
+    teams: [{
+      team_label: 'BLUE', side: 'A',
+      assignments: team.map(([c, pos]) => ({ player_id: c.player.id, assigned_position: pos }))
+    }],
+  };
+
+  // 초기 배치 좌표 저장 (이후 재배치 방지)
+  const posCounts = {};
+  _previewMatch.teams[0].assignments.forEach(a => {
+    const pos  = a.assigned_position;
+    const idx  = posCounts[pos] || 0;
+    posCounts[pos] = idx + 1;
+    const slots = getSlots(pos, 'left');
+    const sl    = slots[Math.min(idx, slots.length-1)];
+    a.custom_x  = sl.l;
+    a.custom_y  = sl.t;
+  });
 
   showTab('board');
-  refreshBoardSelect(match.game_no);
+  showPreviewMode();
 }
 
 function doScrimmage() {
@@ -923,20 +1175,570 @@ function doScrimmage() {
   if (DB.attendance.filter(a => a.session_id === sess.id).length < 22) {
     alert('출석 인원이 22명 미만입니다.'); return;
   }
-  const cands         = getCandidates(sess.id);
+  const cands = getCandidates(sess.id);
   const [teamA, teamB] = assignTwoTeams(cands);
-
   const posCnt = {};
-  teamA.forEach(([, pos]) => { posCnt[pos] = (posCnt[pos] || 0) + 1; });
-  const df = posCnt.DF || 4, mf = posCnt.MF || 4, fw = posCnt.FW || 2;
+  teamA.forEach(([, pos]) => { posCnt[pos] = (posCnt[pos]||0)+1; });
+  const df = posCnt.DF||4, mf = posCnt.MF||4, fw = posCnt.FW||2;
 
-  const match = saveMatchToDB(sess.id, [
-    { team_label:'BLUE',  side:'A', assignments: teamA.map(([c, pos]) => ({ player_id:c.player.id, assigned_position:pos })) },
-    { team_label:'WHITE', side:'B', assignments: teamB.map(([c, pos]) => ({ player_id:c.player.id, assigned_position:pos })) },
-  ], 'SCRIMMAGE', [df, mf, fw]);
+  _previewConfirmed = false;
+  _previewType  = 'SCRIMMAGE';
+  _previewMatch = {
+    id: -1, session_id: sess.id, game_no: -1,
+    match_type: 'SCRIMMAGE',
+    event_flavor: `FORM:${df}-${mf}-${fw}`,
+    created_at: new Date().toISOString(),
+    teams: [
+      { team_label:'BLUE',  side:'A',
+        assignments: teamA.map(([c,pos])=>({ player_id:c.player.id, assigned_position:pos })) },
+      { team_label:'WHITE', side:'B',
+        assignments: teamB.map(([c,pos])=>({ player_id:c.player.id, assigned_position:pos })) },
+    ],
+  };
+
+  // 초기 배치 좌표 저장 (이후 재배치 방지)
+  const sides = { BLUE: 'left', WHITE: 'right' };
+  _previewMatch.teams.forEach(team => {
+    const side = sides[team.team_label] || 'left';
+    const posCounts = {};
+    team.assignments.forEach(a => {
+      const pos  = a.assigned_position;
+      const idx  = posCounts[pos] || 0;
+      posCounts[pos] = idx + 1;
+      const slots = getSlots(pos, side);
+      const sl    = slots[Math.min(idx, slots.length-1)];
+      a.custom_x  = sl.l;
+      a.custom_y  = sl.t;
+    });
+  });
 
   showTab('board');
-  refreshBoardSelect(match.game_no);
+  showPreviewMode();
+}
+
+// ── 미리보기 모드 표시 ──
+function showPreviewMode() {
+  const header = document.getElementById('board-preview-header');
+  header.style.display    = 'flex';
+  header.style.background = '#fefce8';
+  header.style.borderBottom = '1px solid #fde68a';
+  header.style.position   = 'sticky';
+  header.style.top        = '0';
+  header.style.zIndex     = '50';
+
+  document.getElementById('preview-banner-text').textContent =
+    '⚠️ 미리보기 모드 — 아직 저장되지 않았습니다';
+  document.getElementById('preview-banner-text').style.color = '#92400e';
+  document.getElementById('preview-confirm-btn').textContent = '✅ 확인 (저장)';
+  document.getElementById('preview-confirm-btn').disabled    = false;
+  document.getElementById('preview-cancel-btn').style.display = '';
+
+  document.getElementById('bench-panel').style.display = 'block';
+
+  renderBoardPreview();
+  renderBenchPanel();
+}
+
+// ── 미리보기 보드 렌더링 ──
+function renderBoardPreview() {
+  if (!_previewMatch) return;
+  const area      = document.getElementById('board-area');
+  const players   = DB.players;
+  const isScrimmage = _previewMatch.match_type === 'SCRIMMAGE';
+
+  document.getElementById('board-title').textContent =
+    `미리보기 · ${isScrimmage ? '자체게임' : '경기'} ${_previewMatch.event_flavor || ''}`;
+
+  const teams = _previewMatch.teams || [];
+  const blue  = teams.find(t => t.team_label === 'BLUE');
+  const white = teams.find(t => t.team_label === 'WHITE');
+
+  let chipsHtml = '';
+  if (isScrimmage) {
+    chipsHtml += blue  ? buildChipsHtmlDraggable(blue.assignments,  players, 'left',  'chip-blue')  : '';
+    chipsHtml += white ? buildChipsHtmlDraggable(white.assignments, players, 'right', 'chip-white') : '';
+  } else {
+    chipsHtml = blue ? buildChipsHtmlDraggable(blue.assignments, players, 'left', '') : '';
+  }
+
+  const badge = isScrimmage
+    ? `<div class="mb-2">
+         <span class="badge bg-primary me-1">BLUE (좌)</span>
+         <span class="badge bg-light text-dark border">WHITE (우)</span>
+       </div>`
+    : '';
+
+  area.innerHTML = `
+    ${badge}
+    <div class="pitch-wrap" id="pitchWrap"
+         style="position:relative;"
+         ondragover="event.preventDefault()"
+         ondrop="handlePitchDrop(event)">
+      ${FIELD_SVG}
+      ${chipsHtml}
+    </div>`;
+
+  document.querySelectorAll('#pitchWrap .player-chip').forEach(initChipDragPreview);
+}
+
+// ── 미리보기용 칩 HTML (draggable + custom 좌표 지원) ──
+function buildChipsHtmlDraggable(assignments, players, side, teamClass) {
+  const posCounts = {};
+  return assignments.map(a => {
+    const p = players.find(x => x.id === a.player_id);
+    if (!p) return '';
+    const pos = a.assigned_position;
+    const idx = posCounts[pos] || 0;
+    posCounts[pos] = idx + 1;
+
+    let l, t;
+    if (a.custom_x !== undefined && a.custom_y !== undefined) {
+      // 드래그로 직접 배치된 위치 사용
+      l = a.custom_x; t = a.custom_y;
+    } else {
+      // custom 좌표 없으면 고정된 개별 좌표 사용
+      // _previewMatch 에 초기 배치 시 모든 선수에 custom_x/y 를 저장해야 함
+      // 없으면 현재 idx 기반 슬롯 사용 (최초 1회만)
+      const slots = getSlots(pos, side);
+      const sl    = slots[Math.min(idx, slots.length-1)];
+      l = sl.l; t = sl.t;
+      // 다음번 렌더링에서도 같은 위치 유지하도록 저장
+      a.custom_x = l;
+      a.custom_y = t;
+    }
+
+    const isGk = pos === 'GK';
+    const cls  = `player-chip ${teamClass} ${isGk ? 'gk-chip' : ''}`.trim();
+    return `<div class="${cls}" draggable="true"
+         data-pos="${pos}" data-pid="${p.id}" data-side="${side}"
+         data-init-l="${l}" data-init-t="${t}"
+         style="left:${l}%;top:${t}%;"
+    >${p.name}<small>${pos} ${skillLogoHtml(p.skill_grade)}</small></div>`;
+  }).join('');
+}
+
+// ── 미리보기 칩 드래그 초기화 ──
+function initChipDragPreview(chip) {
+  const pid = parseInt(chip.dataset.pid);
+  let dragging = false, offX = 0, offY = 0;
+
+  chip.addEventListener('mousedown', e => {
+    e.preventDefault();
+    dragging = true;
+    chip.classList.add('dragging');
+    chip.style.zIndex = 1000;
+    const r = document.getElementById('pitchWrap').getBoundingClientRect();
+    offX = e.clientX - r.left - parseFloat(chip.style.left)/100 * r.width;
+    offY = e.clientY - r.top  - parseFloat(chip.style.top) /100 * r.height;
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!dragging || chip.dataset.pid != pid) return;
+    const wrap = document.getElementById('pitchWrap');
+    if (!wrap) return;
+    const r = wrap.getBoundingClientRect();
+    const benchEl = document.getElementById('bench-list');
+    const br = benchEl ? benchEl.getBoundingClientRect() : null;
+    if (br && e.clientX >= br.left && e.clientX <= br.right &&
+              e.clientY >= br.top  && e.clientY <= br.bottom) {
+      benchEl.style.background = '#dcfce7';
+      chip.style.opacity = '0.5';
+    } else {
+      if (benchEl) benchEl.style.background = '';
+      chip.style.opacity = '1';
+    }
+    const x = (e.clientX - r.left - offX) / r.width  * 100;
+    const y = (e.clientY - r.top  - offY) / r.height * 100;
+    chip.style.left = Math.max(0, Math.min(100, x)) + '%';
+    chip.style.top  = Math.max(0, Math.min(100, y)) + '%';
+  });
+
+  document.addEventListener('mouseup', e => {
+    if (!dragging || chip.dataset.pid != pid) return;
+    dragging = false;
+    chip.classList.remove('dragging');
+    chip.style.zIndex = 10;
+    chip.style.opacity = '1';
+    const benchEl = document.getElementById('bench-list');
+    if (benchEl) benchEl.style.background = '';
+
+    const br = benchEl ? benchEl.getBoundingClientRect() : null;
+    if (br && e.clientX >= br.left && e.clientX <= br.right &&
+              e.clientY >= br.top  && e.clientY <= br.bottom) {
+      moveChipToBench(pid);
+      return;
+    }
+    // _previewMatch assigned_position 업데이트
+    const xPct   = parseFloat(chip.style.left);
+    const side   = chip.dataset.side || 'left';
+    const newPos = getPosFromXPct(xPct, side);
+    chip.querySelector('small').firstChild.textContent = newPos + ' ';
+    chip.classList.toggle('gk-chip', newPos === 'GK');
+    chip.dataset.pos = newPos;
+    if (_previewMatch) {
+      for (const team of _previewMatch.teams) {
+        const a = team.assignments.find(a => a.player_id === pid);
+        if (a) {
+          a.assigned_position = newPos;
+          a.custom_x = parseFloat(chip.style.left);
+          a.custom_y = parseFloat(chip.style.top);
+          break;
+        }
+      }
+    }
+    updateFormationDisplay();
+  });
+
+  chip.addEventListener('touchstart', e => {
+    e.preventDefault();
+    dragging = true;
+    chip.classList.add('dragging');
+    chip.style.zIndex = 1000;
+    const r = document.getElementById('pitchWrap').getBoundingClientRect();
+    const t = e.touches[0];
+    offX = t.clientX - r.left - parseFloat(chip.style.left)/100 * r.width;
+    offY = t.clientY - r.top  - parseFloat(chip.style.top) /100 * r.height;
+  }, { passive: false });
+
+  document.addEventListener('touchmove', e => {
+    if (!dragging || chip.dataset.pid != pid) return;
+    e.preventDefault();
+    const wrap = document.getElementById('pitchWrap');
+    if (!wrap) return;
+    const r = wrap.getBoundingClientRect();
+    const t = e.touches[0];
+    const benchEl = document.getElementById('bench-list');
+    const br = benchEl ? benchEl.getBoundingClientRect() : null;
+    if (br && t.clientX >= br.left && t.clientX <= br.right &&
+              t.clientY >= br.top  && t.clientY <= br.bottom) {
+      if (benchEl) benchEl.style.background = '#dcfce7';
+      chip.style.opacity = '0.5';
+    } else {
+      if (benchEl) benchEl.style.background = '';
+      chip.style.opacity = '1';
+    }
+    const x = (t.clientX - r.left - offX) / r.width  * 100;
+    const y = (t.clientY - r.top  - offY) / r.height * 100;
+    chip.style.left = Math.max(0, Math.min(100, x)) + '%';
+    chip.style.top  = Math.max(0, Math.min(100, y)) + '%';
+  }, { passive: false });
+
+  document.addEventListener('touchend', e => {
+    if (!dragging || chip.dataset.pid != pid) return;
+    dragging = false;
+    chip.classList.remove('dragging');
+    chip.style.zIndex = 10;
+    chip.style.opacity = '1';
+    const t = e.changedTouches[0];
+    const benchEl = document.getElementById('bench-list');
+    if (benchEl) benchEl.style.background = '';
+    const br = benchEl ? benchEl.getBoundingClientRect() : null;
+    if (br && t.clientX >= br.left && t.clientX <= br.right &&
+              t.clientY >= br.top  && t.clientY <= br.bottom) {
+      moveChipToBench(pid);
+      return;
+    }
+    // _previewMatch assigned_position 업데이트
+    const xPct   = parseFloat(chip.style.left);
+    const side   = chip.dataset.side || 'left';
+    const newPos = getPosFromXPct(xPct, side);
+    chip.querySelector('small').firstChild.textContent = newPos + ' ';
+    chip.classList.toggle('gk-chip', newPos === 'GK');
+    chip.dataset.pos = newPos;
+    if (_previewMatch) {
+      for (const team of _previewMatch.teams) {
+        const a = team.assignments.find(a => a.player_id === pid);
+        if (a) {
+          a.assigned_position = newPos;
+          a.custom_x = parseFloat(chip.style.left);
+          a.custom_y = parseFloat(chip.style.top);
+          break;
+        }
+      }
+    }
+    updateFormationDisplay();
+  });
+}
+
+// ── 보드 드롭 핸들러 (대기명단 → 보드) ──
+function handlePitchDrop(e) {
+  e.preventDefault();
+  const pid = parseInt(e.dataTransfer.getData('bench-pid'));
+  if (!pid) return;
+  const pitch = document.getElementById('pitchWrap');
+  const r     = pitch.getBoundingClientRect();
+  const xPct  = (e.clientX - r.left) / r.width  * 100;
+  const yPct  = (e.clientY - r.top)  / r.height * 100;
+  const isScrimmage = _previewMatch.match_type === 'SCRIMMAGE';
+  const teamLabel   = (isScrimmage && xPct > 50) ? 'WHITE' : 'BLUE';
+  const team = _previewMatch.teams.find(t => t.team_label === teamLabel)
+            || _previewMatch.teams[0];
+  if (!team) return;
+  // 1. 먼저 가장 가까운 칩 찾기 (제거 전에!)
+  let closestChip = null;
+  let minDist = Infinity;
+  document.querySelectorAll('#pitchWrap .player-chip').forEach(c => {
+    const cx = parseFloat(c.style.left);
+    const cy = parseFloat(c.style.top);
+    const dist = Math.sqrt((cx - xPct) ** 2 + (cy - yPct) ** 2);
+    if (dist < minDist) { minDist = dist; closestChip = c; }
+  });
+
+  // 2. 이미 필드에 있으면 제거
+  for (const t of _previewMatch.teams)
+    t.assignments = t.assignments.filter(a => a.player_id !== pid);
+
+  // 3. 교체 처리
+  const player = DB.players.find(p => p.id === pid);
+  const pos    = (player && player.pos1) ? player.pos1 : 'MF';
+  if (closestChip && minDist < 15) {
+    const replacedPid = parseInt(closestChip.dataset.pid);
+    const replaceX    = parseFloat(closestChip.style.left);
+    const replaceY    = parseFloat(closestChip.style.top);
+    const replacePos  = closestChip.dataset.pos;
+    for (const t of _previewMatch.teams)
+      t.assignments = t.assignments.filter(a => a.player_id !== replacedPid);
+    team.assignments.push({ player_id: pid, assigned_position: replacePos, custom_x: replaceX, custom_y: replaceY });
+  } else {
+    team.assignments.push({ player_id: pid, assigned_position: pos, custom_x: xPct, custom_y: yPct });
+  }
+
+  renderBoardPreview();
+  renderBenchPanel();
+  updateFormationDisplay();
+}
+
+// ── 대기명단 렌더링 ──
+function renderBenchPanel() {
+  const sess     = getOrCreateSession();
+  const attIds   = new Set(DB.attendance.filter(a => a.session_id === sess.id).map(a => a.player_id));
+  const onFieldIds = new Set((_previewMatch.teams||[]).flatMap(t => t.assignments.map(a => a.player_id)));
+  const appsMap  = getAppsMap(sess.id);
+  const bench    = DB.players.filter(
+    p => attIds.has(p.id) && !onFieldIds.has(p.id) && !DB.resting.includes(p.id)
+  );
+  const container = document.getElementById('bench-list');
+  container.innerHTML = '';
+  if (!bench.length) {
+    container.innerHTML = '<p class="text-muted text-center py-3" style="font-size:12px;">대기 선수 없음</p>';
+    return;
+  }
+  bench.forEach(p => {
+    const cnt = appsMap[p.id] || 0;
+    const div = document.createElement('div');
+    div.className   = 'bench-chip';
+    div.dataset.pid = p.id;
+    div.draggable   = true;
+    div.style.cssText = `
+      background:#fff; border:1.5px solid #16a34a; border-radius:8px;
+      padding:6px 10px; font-size:12px; font-weight:700;
+      cursor:grab; user-select:none; margin-bottom:5px;
+      display:flex; align-items:center; gap:4px; flex-wrap:wrap;
+    `;
+    div.innerHTML = `<span>${p.name}</span>${posBadgeHtml(p.pos1)}${playBadgeHtml(cnt)}`;
+    div.addEventListener('dragstart', e => { e.dataTransfer.setData('bench-pid', p.id); });
+    div.addEventListener('touchstart', e => { e.preventDefault(); benchTouchDrag(div, p.id, e); }, { passive: false });
+    container.appendChild(div);
+  });
+  container.addEventListener('dragover', e => e.preventDefault());
+  container.addEventListener('drop', e => {
+    e.preventDefault();
+    const pid = parseInt(e.dataTransfer.getData('field-pid'));
+    if (pid) moveChipToBench(pid);
+  });
+}
+
+// ── 보드 칩 → 대기석 ──
+function moveChipToBench(playerId) {
+  for (const team of _previewMatch.teams)
+    team.assignments = team.assignments.filter(a => a.player_id !== playerId);
+  renderBoardPreview();
+  renderBenchPanel();
+  updateFormationDisplay();
+}
+
+// ── 대기명단 터치 드래그 ──
+function benchTouchDrag(chip, playerId, e) {
+  const t0    = e.touches[0];
+  const clone = chip.cloneNode(true);
+  Object.assign(clone.style, {
+    position: 'fixed', zIndex: 9999, opacity: '0.85',
+    pointerEvents: 'none', left: (t0.clientX - 50) + 'px',
+    top: (t0.clientY - 25) + 'px', minWidth: '80px',
+  });
+  document.body.appendChild(clone);
+
+  function onMove(ev) {
+    const t = ev.touches[0];
+    clone.style.left = (t.clientX - 50) + 'px';
+    clone.style.top  = (t.clientY - 25) + 'px';
+  }
+  function onEnd(ev) {
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('touchend',  onEnd);
+    document.body.removeChild(clone);
+    const t     = ev.changedTouches[0];
+    const pitch = document.getElementById('pitchWrap');
+    if (!pitch) return;
+    const r = pitch.getBoundingClientRect();
+    if (t.clientX >= r.left && t.clientX <= r.right &&
+        t.clientY >= r.top  && t.clientY <= r.bottom) {
+      const xPct        = (t.clientX - r.left) / r.width  * 100;
+      const yPct        = (t.clientY - r.top)  / r.height * 100;
+      const isScrimmage = _previewMatch.match_type === 'SCRIMMAGE';
+      const teamLabel   = (isScrimmage && xPct > 50) ? 'WHITE' : 'BLUE';
+      const team = _previewMatch.teams.find(tm => tm.team_label === teamLabel)
+                || _previewMatch.teams[0];
+      if (!team) return;
+      for (const tm of _previewMatch.teams)
+        tm.assignments = tm.assignments.filter(a => a.player_id !== playerId);
+
+      // 드롭 위치에서 가장 가까운 기존 칩 찾기
+      let closestChip = null;
+      let minDist = Infinity;
+      document.querySelectorAll('#pitchWrap .player-chip').forEach(c => {
+        const cx = parseFloat(c.style.left);
+        const cy = parseFloat(c.style.top);
+        const dist = Math.sqrt((cx - xPct) ** 2 + (cy - yPct) ** 2);
+        if (dist < minDist) { minDist = dist; closestChip = c; }
+      });
+
+      const player = DB.players.find(p => p.id === playerId);
+      const pos    = (player && player.pos1) ? player.pos1 : 'MF';
+
+      if (closestChip && minDist < 15) {
+        const replacedPid = parseInt(closestChip.dataset.pid);
+        const replaceX    = parseFloat(closestChip.style.left);
+        const replaceY    = parseFloat(closestChip.style.top);
+        const replacePos  = closestChip.dataset.pos;
+        // 기존 선수 대기석으로
+        for (const tm of _previewMatch.teams)
+          tm.assignments = tm.assignments.filter(a => a.player_id !== replacedPid);
+        // 드롭한 선수는 기존 선수 위치/포지션으로
+        team.assignments.push({ player_id: playerId, assigned_position: replacePos, custom_x: replaceX, custom_y: replaceY });
+      } else {
+        team.assignments.push({ player_id: playerId, assigned_position: pos, custom_x: xPct, custom_y: yPct });
+      }
+
+      renderBoardPreview();
+      renderBenchPanel();
+      updateFormationDisplay();
+    }
+  }
+  document.addEventListener('touchmove', onMove, { passive: false });
+  document.addEventListener('touchend',  onEnd);
+}
+
+// ── 포메이션 계산 및 표시 업데이트 ──
+function calcFormation(teamSelector) {
+  const chips = document.querySelectorAll(teamSelector || '#pitchWrap .player-chip');
+  const cnt = { GK:0, DF:0, MF:0, FW:0 };
+  chips.forEach(chip => {
+    const pos = chip.dataset.pos;
+    if (cnt[pos] !== undefined) cnt[pos]++;
+  });
+  return `${cnt.DF}-${cnt.MF}-${cnt.FW}`;
+}
+
+function updateFormationDisplay() {
+  const formation = calcFormation();
+  const titleEl   = document.getElementById('board-title');
+  if (!titleEl) return;
+  const current = titleEl.textContent;
+  const updated = current.replace(/FORM:\d+-\d+-\d+/, 'FORM:' + formation);
+  titleEl.textContent = updated;
+  if (_previewMatch) {
+    _previewMatch.event_flavor = 'FORM:' + formation;
+  }
+}
+
+// ── X% → 포지션 변환 ──
+function getPosFromXPct(xPct, side) {
+  if (side === 'right') {
+    if (xPct >= 87) return 'GK';
+    if (xPct >= 72) return 'DF';
+    if (xPct >= 57) return 'MF';
+    return 'FW';
+  } else {
+    if (xPct <= 13) return 'GK';
+    if (xPct <= 28) return 'DF';
+    if (xPct <= 43) return 'MF';
+    return 'FW';
+  }
+}
+
+// ── 확인 (저장) ──
+function confirmBoard() {
+  if (!_previewMatch) return;
+
+  // 팀별 인원 체크
+  for (const team of _previewMatch.teams) {
+    const count = team.assignments.length;
+    if (count < 11) {
+      const label = team.team_label === 'WHITE' ? 'WHITE팀' : 'BLUE팀';
+      const ok = confirm(
+        `⚠️ ${label} 인원이 ${count}명입니다.\n\n` +
+        `11명이 되지 않았지만 현재 인원(${count}명)으로 구성되어 있습니다.\n` +
+        `그대로 진행하시겠습니까?`
+      );
+      if (!ok) return;
+    }
+  }
+
+  const sess    = getOrCreateSession();
+  const matches = DB.matches;
+  const sessMs  = matches.filter(m => m.session_id === sess.id);
+  const nextNo  = sessMs.length ? Math.max(...sessMs.map(m => m.game_no)) + 1 : 1;
+
+  // custom_x/y 유지 (위치 보존)
+  const saved = JSON.parse(JSON.stringify(_previewMatch));
+  // 저장 직전 _previewMatch.teams 기준으로 포메이션 재계산
+  const cnt = { DF:0, MF:0, FW:0 };
+  saved.teams.forEach(team => {
+    team.assignments.forEach(a => {
+      const pos = a.assigned_position;
+      if (cnt[pos] !== undefined) cnt[pos]++;
+    });
+  });
+  saved.event_flavor = `FORM:${cnt.DF}-${cnt.MF}-${cnt.FW}`;
+
+  saved.id      = DB.nextId(matches);
+  saved.game_no = nextNo;
+  matches.push(saved);
+  DB.matches = matches;
+
+  _previewConfirmed = true;
+  _previewMatch     = null;
+  _previewType      = null;
+
+  // 배너 변경
+  document.getElementById('preview-banner-text').textContent = '✅ 새로운 경기가 생성됐습니다!';
+  document.getElementById('preview-banner-text').style.color = '#166534';
+  document.getElementById('board-preview-header').style.background    = '#f0fdf4';
+  document.getElementById('board-preview-header').style.borderBottom  = '1px solid #86efac';
+  document.getElementById('preview-confirm-btn').textContent = '✅ 저장 완료';
+  document.getElementById('preview-confirm-btn').disabled    = true;
+  document.getElementById('preview-cancel-btn').style.display = 'none';
+
+  document.getElementById('bench-panel').style.display = 'none';
+
+  refreshBoardSelect(nextNo);
+
+  // 3초 후 배너 숨김
+  setTimeout(() => {
+    document.getElementById('board-preview-header').style.display = 'none';
+  }, 3000);
+}
+
+// ── 취소 ──
+function cancelPreview() {
+  if (!confirm('미리보기를 취소하시겠습니까?\n변경사항이 저장되지 않습니다.')) return;
+  _previewMatch     = null;
+  _previewType      = null;
+  _previewConfirmed = false;
+  document.getElementById('board-preview-header').style.display = 'none';
+  document.getElementById('bench-panel').style.display          = 'none';
+  refreshBoardSelect();
 }
 
 // ================================================================
@@ -1173,7 +1975,7 @@ function renderMatches() {
     return `
       <div class="match-card">
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
-          <span class="fw-bold fs-5">${m.game_no}번 ${type}
+          <span class="fw-bold fs-5">${m.game_no}${type}
             <small class="text-muted fw-normal" style="font-size:13px;">${m.event_flavor || ''}</small>
           </span>
           <div class="d-flex gap-2">
@@ -1209,6 +2011,12 @@ function doResetDB() {
   DB.attendance = [];
   DB.sessions   = [];
   DB.matches    = [];
+  DB.resting        = [];
+  _previewMatch     = null;
+  _previewType      = null;
+  _previewConfirmed = false;
+  document.getElementById('board-preview-header').style.display = 'none';
+  document.getElementById('bench-panel').style.display          = 'none';
   renderAttendance();
   renderMatches();
   refreshBoardSelect();
@@ -1287,7 +2095,7 @@ function showTab(name) {
     document.querySelectorAll('.tab-btn')[i].classList.toggle('active', n === name);
   });
   if (name === 'attendance') renderAttendance();
-  if (name === 'board')      refreshBoardSelect();
+  if (name === 'board')      { if (_previewMatch) showPreviewMode(); else refreshBoardSelect(); }
   if (name === 'players')    renderPlayers();
   if (name === 'matches')    renderMatches();
 }
@@ -1358,4 +2166,3 @@ window.addEventListener('appinstalled', function() {
 </script>
 </body>
 </html>
-
