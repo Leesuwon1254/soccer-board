@@ -173,7 +173,25 @@
       cursor:grab; user-select:none; z-index:10;
       border:2px solid rgba(255,255,255,0.9);
       background:#fff; color:#111;
+      overflow:visible;
     }
+    /* ── 보드 칩 출전횟수 뱃지 ── */
+    .chip-play-badge {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 10px;
+      color: #fff;
+      line-height: 1.4;
+      pointer-events: none;
+      z-index: 20;
+    }
+    .chip-play-badge.low  { background: #16a34a; }
+    .chip-play-badge.mid  { background: #f59e0b; }
+    .chip-play-badge.high { background: #dc2626; }
     .player-chip.gk-chip { background:#2563eb; color:#fff; }
     .player-chip.chip-blue { background:#dbeafe; color:#1d4ed8; }
     .player-chip.chip-blue.gk-chip { background:#2563eb; color:#fff; }
@@ -218,6 +236,135 @@
     @media (max-width:600px) {
       .tab-btn { font-size:13px; padding:12px 8px; }
       .top-right-btns .btn-label { display:none; }
+    }
+
+    /* ── 보드 풀스크린 ── */
+    body.board-fullscreen .pitch-wrap {
+      max-width: none;
+      width: min(100vw, calc(100vh * 900 / 506));
+      height: min(100vh, calc(100vw * 506 / 900));
+      aspect-ratio: 900 / 506;
+      border-radius: 8px;
+    }
+    body.board-fullscreen #tab-board {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      background: #111;
+      display: flex !important;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* ── 상단 오버레이 ── */
+    #board-fs-topbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 200;
+      transform: translateY(-100%);
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+    }
+    #board-fs-topbar.visible {
+      transform: translateY(0);
+      pointer-events: all;
+    }
+    .fs-nav-bar {
+      background: rgba(10, 14, 20, 0.96);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding: 0 18px;
+      height: 62px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .fs-tab-btns { display: flex; gap: 4px; }
+    .fs-tab-btn {
+      padding: 9px 18px;
+      border: none;
+      background: transparent;
+      color: rgba(255,255,255,0.45);
+      font-size: 17px;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .fs-tab-btn:hover { color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.07); }
+    .fs-tab-active { color: #fff !important; background: rgba(34,197,94,0.2) !important; }
+    .fs-right-btns { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+
+    /* ── 하단 오버레이 ── */
+    #board-fs-bottombar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 200;
+      transform: translateY(100%);
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+    }
+    #board-fs-bottombar.visible {
+      transform: translateY(0);
+      pointer-events: all;
+    }
+    .fs-bottom-bar {
+      background: rgba(10, 14, 20, 0.93);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding: 12px 22px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    /* ── 터치 힌트 ── */
+    #board-touch-hint {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 150;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 30px;
+      padding: 11px 24px;
+      color: rgba(255,255,255,0.8);
+      font-size: 15px;
+      font-weight: 500;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.4s;
+      display: none;
+    }
+    #board-touch-hint.show { opacity: 1; }
+    body.board-fullscreen #board-touch-hint { display: block; }
+
+    /* ── 선수 칩 확대 (태블릿) ── */
+    body.board-fullscreen .player-chip {
+      font-size: clamp(14px, 1.7vw, 22px);
+      padding: clamp(7px, 0.9vw, 13px) clamp(12px, 1.4vw, 20px);
+      border-radius: 10px;
+      border-width: 2.5px;
+    }
+    body.board-fullscreen .player-chip small {
+      font-size: clamp(11px, 1.2vw, 16px);
+      margin-top: 3px;
+    }
+    body.board-fullscreen .chip-play-badge {
+      font-size: clamp(11px, 1.1vw, 15px);
+      padding: 2px 8px;
+      top: -11px;
+      right: -11px;
     }
   </style>
   <!-- ── PWA 설정 ── -->
@@ -268,6 +415,10 @@
                 onclick="requireAdmin('다음 경기(11명)를 생성합니다.', doNextGame)">경기 생성 (11명)</button>
         <button class="btn btn-warning text-dark"
                 onclick="requireAdmin('자체게임(11 vs 11)을 생성합니다.', doScrimmage)">자체게임 (11 vs 11)</button>
+        <button class="btn btn-info text-white"
+                onclick="showTodayReport()">
+          📋 오늘의 리포트
+        </button>
       </div>
     </div>
     <div class="row g-3">
@@ -299,59 +450,76 @@
   </div>
 </div>
 
+<!-- 상단 오버레이 바 -->
+<div id="board-fs-topbar">
+  <div class="fs-nav-bar">
+    <div class="fs-tab-btns">
+      <button class="fs-tab-btn" onclick="showTab('attendance')">출석</button>
+      <button class="fs-tab-btn fs-tab-active">보드(한 팀)</button>
+      <button class="fs-tab-btn" onclick="showTab('players')">선수관리</button>
+      <button class="fs-tab-btn" onclick="showTab('matches')">경기목록</button>
+    </div>
+    <div class="fs-right-btns">
+      <button class="btn btn-sm btn-outline-danger"
+              onclick="requireAdmin('출석/경기 기록을 모두 삭제합니다.', doResetDB)">DB 초기화</button>
+      <button class="btn btn-sm btn-outline-secondary"
+              onclick="requireAdmin('비밀번호를 변경합니다.', openPwChangeModal)">🔑 비번변경</button>
+      <button class="btn btn-sm btn-primary" onclick="triggerExcelImport()">📂 파일 업로드</button>
+    </div>
+  </div>
+</div>
+
+<!-- 하단 오버레이 바 -->
+<div id="board-fs-bottombar">
+  <div class="fs-bottom-bar">
+    <div id="board-preview-header" style="display:none; align-items:center; gap:10px;">
+      <span id="preview-banner-text" style="color:#f59e0b; font-weight:700; font-size:15px;">
+        ⚠️ 미리보기 모드
+      </span>
+      <button id="preview-confirm-btn" class="btn btn-sm btn-success"
+              onclick="confirmBoard()">✅ 저장</button>
+      <button id="preview-cancel-btn" class="btn btn-sm btn-outline-secondary"
+              onclick="cancelPreview()">취소</button>
+    </div>
+    <div style="flex:1;">
+      <div id="board-title" style="font-size:18px; font-weight:800; color:#fff;">보드(한 팀)</div>
+      <div style="font-size:12px; color:rgba(255,255,255,0.45);">선수 칩을 드래그하여 포지션 변경</div>
+    </div>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <select id="board-game-select" class="form-select form-select-sm"
+              style="width:auto; background:#1e2530; color:#fff; border-color:#555; font-size:15px;"
+              onchange="renderBoardByGame()"></select>
+      <button class="btn btn-success"
+              style="font-size:15px; padding:8px 18px; font-weight:700;"
+              onclick="requireAdmin('새로운 경기를 생성합니다.', doNextGame)">
+        🔄 새로운경기
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 최초 진입 힌트 -->
+<div id="board-touch-hint">👆 화면을 터치하면 메뉴가 나타납니다</div>
+
 <!-- ══════════ 탭: 보드 ══════════ -->
 <div id="tab-board" class="tab-content-panel">
+  <div class="d-flex gap-3 w-100" id="board-flex-wrap" style="align-items:center; justify-content:center;">
+    <!-- 축구장 영역 -->
+    <div id="board-area" style="flex:1; min-width:0;"></div>
 
-  <!-- 미리보기 배너 -->
-  <div id="board-preview-header" style="display:none;"
-       class="d-flex align-items-center justify-content-center gap-3 py-2 border-bottom"
-       style="background:#fefce8; position:sticky; top:0; z-index:50;">
-    <span id="preview-banner-text" class="fw-bold" style="color:#92400e;">
-      ⚠️ 미리보기 모드 — 아직 저장되지 않았습니다
-    </span>
-    <button id="preview-confirm-btn" class="btn btn-success px-4"
-            onclick="confirmBoard()">✅ 확인 (저장)</button>
-    <button id="preview-cancel-btn" class="btn btn-outline-secondary"
-            onclick="cancelPreview()">취소</button>
-  </div>
-
-  <div class="container-fluid py-3">
-    <!-- 보드 상단 컨트롤 -->
-    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-      <div>
-        <h5 class="m-0 fw-bold" id="board-title">보드(한 팀)</h5>
-        <small class="text-muted">선수 칩을 드래그하여 포지션을 변경할 수 있습니다.</small>
+    <!-- 대기명단 패널 (미리보기 시 표시) -->
+    <div id="bench-panel" style="display:none; width:210px; flex-shrink:0;">
+      <div class="fw-bold mb-2" style="font-size:13px; color:#fff;">
+        <span style="display:inline-block;width:10px;height:10px;
+                     background:#16a34a;border-radius:50%;margin-right:4px;"></span>
+        대기 명단
       </div>
-      <div class="d-flex gap-2 flex-wrap align-items-center">
-        <select id="board-game-select" class="form-select"
-                style="width:auto;font-size:14px;" onchange="renderBoardByGame()"></select>
-        <button class="btn btn-success"
-                onclick="requireAdmin('새로운 경기를 생성합니다.', doNextGame)">
-          🔄 새로운경기
-        </button>
+      <div id="bench-list"
+           style="border:2px dashed #16a34a; border-radius:12px;
+                  padding:6px; overflow-y:auto;
+                  max-height:calc(100vh - 200px); min-height:200px;">
       </div>
     </div>
-
-    <!-- 보드 + 우측 대기명단 (항상 이 구조) -->
-    <div class="d-flex gap-3" id="board-flex-wrap">
-      <!-- 축구장 영역 -->
-      <div id="board-area" style="flex:1; min-width:0;"></div>
-
-      <!-- 대기명단 패널 (미리보기 시 표시) -->
-      <div id="bench-panel" style="display:none; width:210px; flex-shrink:0;">
-        <div class="fw-bold mb-2" style="font-size:13px;">
-          <span style="display:inline-block;width:10px;height:10px;
-                       background:#16a34a;border-radius:50%;margin-right:4px;"></span>
-          대기 명단
-        </div>
-        <div id="bench-list"
-             style="border:2px dashed #16a34a; border-radius:12px;
-                    padding:6px; overflow-y:auto;
-                    max-height:calc(100vh - 260px); min-height:200px;">
-        </div>
-      </div>
-    </div>
-
   </div>
 </div>
 
@@ -360,7 +528,7 @@
   <div class="container py-3">
     <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
       <h5 class="m-0 fw-bold">선수 관리</h5>
-      <button class="btn btn-primary" onclick="openPlayerModal()">+ 선수 추가</button>
+      <button class="btn btn-primary" onclick="requireAdmin('선수를 추가합니다.', openPlayerModal)">+ 선수 추가</button>
     </div>
     <div class="table-responsive">
       <table class="table table-hover player-table" id="players-table">
@@ -389,6 +557,20 @@
   <div class="container py-3">
     <h5 class="fw-bold mb-3" id="matches-date-label"></h5>
     <div id="matches-list"></div>
+  </div>
+</div>
+
+<!-- ══════════ 모달: 오늘의 리포트 ══════════ -->
+<div id="report-modal" class="modal-overlay">
+  <div class="modal-box" style="max-width:520px;">
+    <div class="modal-title">📋 오늘의 리포트</div>
+    <div id="report-content" style="font-size:14px; line-height:1.8;"></div>
+    <div class="d-flex justify-content-end mt-3">
+      <button class="btn btn-secondary"
+              onclick="document.getElementById('report-modal').classList.remove('show')">
+        닫기
+      </button>
+    </div>
   </div>
 </div>
 
@@ -800,21 +982,40 @@ const FIELD_SVG = `
 
 function buildChipsHtml(assignments, players, side, teamClass) {
   const posCounts = {};
+  const sess    = getOrCreateSession();
+  const appsMap = getAppsMap(sess.id);
+
   return assignments.map(a => {
     const p = players.find(x => x.id === a.player_id);
     if (!p) return '';
     const pos  = a.assigned_position;
     const idx  = posCounts[pos] || 0;
     posCounts[pos] = idx + 1;
-    const slots = getSlots(pos, side);
-    const sl    = slots[Math.min(idx, slots.length - 1)];
-    const isGk  = pos === 'GK';
-    const cls   = `player-chip ${teamClass} ${isGk ? 'gk-chip' : ''}`.trim();
+
+    let l, t;
+    if (a.custom_x !== undefined && a.custom_y !== undefined) {
+      l = a.custom_x; t = a.custom_y;
+    } else {
+      const slots = getSlots(pos, side);
+      const sl    = slots[Math.min(idx, slots.length - 1)];
+      l = sl.l; t = sl.t;
+    }
+
+    const isGk = pos === 'GK';
+    const cls  = `player-chip ${teamClass} ${isGk ? 'gk-chip' : ''}`.trim();
+
+    const cnt = appsMap[p.id] || 0;
+    let badgeHtml = '';
+    if (cnt > 0) {
+      const badgeCls = cnt <= 2 ? 'low' : cnt <= 4 ? 'mid' : 'high';
+      badgeHtml = `<span class="chip-play-badge ${badgeCls}">${cnt}회</span>`;
+    }
+
     return `<div class="${cls}"
          data-pos="${pos}" data-pid="${p.id}"
-         data-side="${side}" data-init-l="${sl.l}" data-init-t="${sl.t}"
-         style="left:${sl.l}%;top:${sl.t}%;"
-    >${p.name}<small>${pos} ${skillLogoHtml(p.skill_grade)}</small></div>`;
+         data-side="${side}" data-init-l="${l}" data-init-t="${t}"
+         style="left:${l}%;top:${t}%;"
+    >${p.name}${badgeHtml}<small>${pos} ${skillLogoHtml(p.skill_grade)}</small></div>`;
   }).join('');
 }
 
@@ -918,9 +1119,10 @@ function initDrag(chip) {
 // ================================================================
 const collator = new Intl.Collator('ko-KR');
 
-function speakWelcome() {
+function speakWelcome(name) {
+  const msg = name ? name + '님 반갑습니다' : '반갑습니다';
   if ('speechSynthesis' in window) {
-    const utter = new SpeechSynthesisUtterance('반갑습니다');
+    const utter = new SpeechSynthesisUtterance(msg);
     utter.lang  = 'ko-KR';
     utter.rate  = 1.0;
     utter.pitch = 1.2;
@@ -928,7 +1130,7 @@ function speakWelcome() {
     window.speechSynthesis.speak(utter);
   } else {
     try {
-      const ctx   = new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const notes = [523, 659, 784];
       notes.forEach((freq, i) => {
         const osc  = ctx.createOscillator();
@@ -940,7 +1142,7 @@ function speakWelcome() {
         gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.12);
         gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.2);
         osc.start(ctx.currentTime + i * 0.12);
-        osc.stop(ctx.currentTime  + i * 0.12 + 0.2);
+        osc.stop(ctx.currentTime + i * 0.12 + 0.2);
       });
     } catch(e) {}
   }
@@ -1064,13 +1266,50 @@ function renderAttendance() {
       setTimeout(() => { bar.style.transition = 'width 3s linear'; }, 50);
     }
 
-    card.addEventListener('click',       () => toggleResting(p.id));
+    let touchStartY = 0;
+    let touchStartX = 0;
+    let isTouchMove = false;
+
+    card.addEventListener('touchstart', function(e) {
+      touchStartY = e.touches[0].clientY;
+      touchStartX = e.touches[0].clientX;
+      isTouchMove = false;
+      startPress();
+    }, { passive: true });
+
+    card.addEventListener('touchmove', function(e) {
+      const dy = Math.abs(e.touches[0].clientY - touchStartY);
+      const dx = Math.abs(e.touches[0].clientX - touchStartX);
+      if (dy > 10 || dx > 10) {
+        isTouchMove = true;
+        if (pressTimer) {
+          clearTimeout(pressTimer);
+          pressTimer = null;
+          if (bar) {
+            bar.classList.remove('active');
+            bar.style.transition = 'none';
+            bar.style.width = '0%';
+            setTimeout(() => { bar.style.transition = 'width 3s linear'; }, 50);
+          }
+        }
+      }
+    }, { passive: true });
+
+    card.addEventListener('touchend', function(e) {
+      if (isTouchMove) { cancelPress(); return; }
+      if (!longPressed) toggleResting(p.id);
+      cancelPress();
+    });
+
+    card.addEventListener('touchcancel', cancelPress);
     card.addEventListener('mousedown',   startPress);
     card.addEventListener('mouseup',     cancelPress);
     card.addEventListener('mouseleave',  cancelPress);
-    card.addEventListener('touchstart',  e => { e.preventDefault(); startPress(); }, { passive: false });
-    card.addEventListener('touchend',    () => { if (!longPressed) toggleResting(p.id); cancelPress(); });
-    card.addEventListener('touchcancel', cancelPress);
+    card.addEventListener('click', function(e) {
+      if (e.sourceCapabilities && !e.sourceCapabilities.firesTouchEvents) {
+        toggleResting(p.id);
+      }
+    });
 
     attList.appendChild(card);
   }
@@ -1092,7 +1331,8 @@ function toggleAttendance(playerId) {
     const cardEl = document.querySelector(`.player-card[data-id="${playerId}"]`);
     if (cardEl) {
       cardEl.classList.add('slide-right');
-      speakWelcome();
+      const pl = DB.players.find(p => p.id === playerId);
+      speakWelcome(pl ? pl.name : null);
       setTimeout(() => {
         att.push({ id: DB.nextId(att), session_id: sess.id, player_id: playerId, checkin_time: new Date().toISOString() });
         DB.attendance = att;
@@ -1220,20 +1460,25 @@ function doScrimmage() {
 function showPreviewMode() {
   const header = document.getElementById('board-preview-header');
   header.style.display    = 'flex';
-  header.style.background = '#fefce8';
-  header.style.borderBottom = '1px solid #fde68a';
-  header.style.position   = 'sticky';
-  header.style.top        = '0';
-  header.style.zIndex     = '50';
 
   document.getElementById('preview-banner-text').textContent =
-    '⚠️ 미리보기 모드 — 아직 저장되지 않았습니다';
-  document.getElementById('preview-banner-text').style.color = '#92400e';
+    '⚠️ 미리보기 모드';
   document.getElementById('preview-confirm-btn').textContent = '✅ 확인 (저장)';
   document.getElementById('preview-confirm-btn').disabled    = false;
   document.getElementById('preview-cancel-btn').style.display = '';
 
   document.getElementById('bench-panel').style.display = 'block';
+
+  // 보드탭의 새로운경기 버튼만 비활성화
+  const boardTab = document.getElementById('tab-board');
+  if (boardTab) {
+    const newGameBtn = boardTab.querySelector('[onclick*="doNextGame"]');
+    if (newGameBtn) {
+      newGameBtn.disabled = true;
+      newGameBtn.style.opacity = '0.5';
+      newGameBtn.title = '먼저 확인(저장)을 눌러주세요';
+    }
+  }
 
   renderBoardPreview();
   renderBenchPanel();
@@ -1284,6 +1529,9 @@ function renderBoardPreview() {
 // ── 미리보기용 칩 HTML (draggable + custom 좌표 지원) ──
 function buildChipsHtmlDraggable(assignments, players, side, teamClass) {
   const posCounts = {};
+  const sess    = getOrCreateSession();
+  const appsMap = getAppsMap(sess.id);
+
   return assignments.map(a => {
     const p = players.find(x => x.id === a.player_id);
     if (!p) return '';
@@ -1297,7 +1545,6 @@ function buildChipsHtmlDraggable(assignments, players, side, teamClass) {
       l = a.custom_x; t = a.custom_y;
     } else {
       // custom 좌표 없으면 고정된 개별 좌표 사용
-      // _previewMatch 에 초기 배치 시 모든 선수에 custom_x/y 를 저장해야 함
       // 없으면 현재 idx 기반 슬롯 사용 (최초 1회만)
       const slots = getSlots(pos, side);
       const sl    = slots[Math.min(idx, slots.length-1)];
@@ -1309,11 +1556,20 @@ function buildChipsHtmlDraggable(assignments, players, side, teamClass) {
 
     const isGk = pos === 'GK';
     const cls  = `player-chip ${teamClass} ${isGk ? 'gk-chip' : ''}`.trim();
+
+    // 출전횟수 뱃지
+    const cnt = appsMap[p.id] || 0;
+    let badgeHtml = '';
+    if (cnt > 0) {
+      const badgeCls = cnt <= 2 ? 'low' : cnt <= 4 ? 'mid' : 'high';
+      badgeHtml = `<span class="chip-play-badge ${badgeCls}">${cnt}회</span>`;
+    }
+
     return `<div class="${cls}" draggable="true"
          data-pos="${pos}" data-pid="${p.id}" data-side="${side}"
          data-init-l="${l}" data-init-t="${t}"
          style="left:${l}%;top:${t}%;"
-    >${p.name}<small>${pos} ${skillLogoHtml(p.skill_grade)}</small></div>`;
+    >${p.name}${badgeHtml}<small>${pos} ${skillLogoHtml(p.skill_grade)}</small></div>`;
   }).join('');
 }
 
@@ -1722,6 +1978,16 @@ function confirmBoard() {
 
   document.getElementById('bench-panel').style.display = 'none';
 
+  const boardTab = document.getElementById('tab-board');
+  if (boardTab) {
+    const newGameBtn = boardTab.querySelector('[onclick*="doNextGame"]');
+    if (newGameBtn) {
+      newGameBtn.disabled = false;
+      newGameBtn.style.opacity = '1';
+      newGameBtn.title = '';
+    }
+  }
+
   refreshBoardSelect(nextNo);
 
   // 3초 후 배너 숨김
@@ -1738,6 +2004,17 @@ function cancelPreview() {
   _previewConfirmed = false;
   document.getElementById('board-preview-header').style.display = 'none';
   document.getElementById('bench-panel').style.display          = 'none';
+
+  const boardTab = document.getElementById('tab-board');
+  if (boardTab) {
+    const newGameBtn = boardTab.querySelector('[onclick*="doNextGame"]');
+    if (newGameBtn) {
+      newGameBtn.disabled = false;
+      newGameBtn.style.opacity = '1';
+      newGameBtn.title = '';
+    }
+  }
+
   refreshBoardSelect();
 }
 
@@ -1756,8 +2033,8 @@ function renderPlayers() {
       <td>${p.pos3 || '-'}</td><td>${p.pos4 || '-'}</td>
       <td style="font-size:13px;">${p.phone || '-'}</td>
       <td>
-        <button class="btn btn-sm btn-outline-primary me-1" onclick="openPlayerModal(${p.id})">수정</button>
-        <button class="btn btn-sm btn-outline-danger" onclick="deletePlayer(${p.id})">삭제</button>
+        <button class="btn btn-sm btn-outline-primary me-1" onclick="requireAdmin('선수 정보를 수정합니다.', ()=>openPlayerModal(${p.id}))">수정</button>
+        <button class="btn btn-sm btn-outline-danger" onclick="requireAdmin('선수를 삭제합니다.', ()=>deletePlayer(${p.id}))">삭제</button>
       </td>
     </tr>`).join('');
 }
@@ -2094,11 +2371,74 @@ function showTab(name) {
     document.getElementById('tab-' + n).classList.toggle('active', n === name);
     document.querySelectorAll('.tab-btn')[i].classList.toggle('active', n === name);
   });
+
+  if (name === 'board') {
+    document.body.classList.add('board-fullscreen');
+    document.querySelector('.tab-nav').style.display = 'none';
+    _boardShowOverlay();
+    if (_previewMatch) showPreviewMode(); else refreshBoardSelect();
+  } else {
+    document.body.classList.remove('board-fullscreen');
+    document.querySelector('.tab-nav').style.display = '';
+    _boardHideOverlay(true);
+  }
+
   if (name === 'attendance') renderAttendance();
-  if (name === 'board')      { if (_previewMatch) showPreviewMode(); else refreshBoardSelect(); }
   if (name === 'players')    renderPlayers();
   if (name === 'matches')    renderMatches();
 }
+
+// ── 보드 오버레이 제어 ──
+let _boardOverlayTimer = null;
+let _boardHintShown    = false;
+
+function _boardShowOverlay() {
+  document.getElementById('board-fs-topbar')?.classList.add('visible');
+  document.getElementById('board-fs-bottombar')?.classList.add('visible');
+  _boardResetTimer();
+  if (!_boardHintShown) {
+    _boardHintShown = true;
+    setTimeout(() => {
+      const h = document.getElementById('board-touch-hint');
+      if (!h) return;
+      h.classList.add('show');
+      setTimeout(() => h.classList.remove('show'), 2500);
+    }, 3500);
+  }
+}
+
+function _boardHideOverlay(immediate) {
+  clearTimeout(_boardOverlayTimer);
+  const hide = () => {
+    document.getElementById('board-fs-topbar')?.classList.remove('visible');
+    document.getElementById('board-fs-bottombar')?.classList.remove('visible');
+  };
+  if (immediate) hide();
+  else _boardOverlayTimer = setTimeout(hide, 3000);
+}
+
+function _boardResetTimer() {
+  clearTimeout(_boardOverlayTimer);
+  _boardOverlayTimer = setTimeout(() => {
+    document.getElementById('board-fs-topbar')?.classList.remove('visible');
+    document.getElementById('board-fs-bottombar')?.classList.remove('visible');
+  }, 3000);
+}
+
+// 터치/클릭 이벤트: 오버레이 토글
+['touchstart', 'click'].forEach(evtName => {
+  document.addEventListener(evtName, (e) => {
+    if (!document.body.classList.contains('board-fullscreen')) return;
+    const top = document.getElementById('board-fs-topbar');
+    const bot = document.getElementById('board-fs-bottombar');
+    if (top?.contains(e.target) || bot?.contains(e.target)) {
+      _boardResetTimer(); return;
+    }
+    if (e.target.closest?.('.player-chip')) return;
+    if (top?.classList.contains('visible')) _boardHideOverlay(true);
+    else _boardShowOverlay();
+  }, evtName === 'touchstart' ? { passive: true } : undefined);
+});
 
 // ================================================================
 // ===== ESC 키 모달 닫기 =====
@@ -2163,6 +2503,130 @@ window.addEventListener('appinstalled', function() {
   console.log('✅ 홈 화면에 추가됨');
   deferredPrompt = null;
 });
+
+function showTodayReport() {
+  const sess    = getOrCreateSession();
+  const matches = DB.matches.filter(m => m.session_id === sess.id);
+  const att     = DB.attendance.filter(a => a.session_id === sess.id);
+  const players = DB.players;
+  const resting = DB.resting || [];
+
+  // 출전 횟수 계산
+  const playCount = {};
+  att.forEach(a => { playCount[a.player_id] = 0; });
+  for (const m of matches) {
+    for (const t of (m.teams || [])) {
+      for (const a of (t.assignments || [])) {
+        if (playCount[a.player_id] !== undefined)
+          playCount[a.player_id] = (playCount[a.player_id] || 0) + 1;
+      }
+    }
+  }
+
+  const attPlayers = att.map(a => {
+    const p = players.find(x => x.id === a.player_id);
+    return p ? { ...p, cnt: playCount[p.id] || 0 } : null;
+  }).filter(Boolean);
+
+  if (attPlayers.length === 0) {
+    alert('오늘 출석한 선수가 없습니다.');
+    return;
+  }
+
+  const totalGames = matches.length;
+  const counts     = attPlayers.map(p => p.cnt);
+  const maxCnt     = Math.max(...counts);
+  const minCnt     = Math.min(...counts);
+  const avgCnt     = counts.reduce((a,b) => a+b, 0) / counts.length;
+  const diff       = maxCnt - minCnt;
+
+  const maxPlayers  = attPlayers.filter(p => p.cnt === maxCnt);
+  const minPlayers  = attPlayers.filter(p => p.cnt === minCnt);
+  const restPlayers = attPlayers.filter(p => resting.includes(p.id));
+
+  const gkPlayers  = attPlayers.filter(p => p.pos1 === 'GK');
+  const mvpPlayers = maxPlayers.filter(p => !resting.includes(p.id));
+
+  const sorted = [...attPlayers].sort((a,b) => b.cnt - a.cnt);
+
+  function makeBar(cnt, max) {
+    const filled = '█'.repeat(cnt);
+    const empty  = '░'.repeat(Math.max(0, max - cnt));
+    return filled + empty;
+  }
+
+  function cntColor(cnt) {
+    if (cnt === 0)  return 'color:#9ca3af;';
+    if (cnt <= 2)   return 'color:#16a34a; font-weight:700;';
+    if (cnt <= 4)   return 'color:#f59e0b; font-weight:700;';
+    return 'color:#dc2626; font-weight:700;';
+  }
+
+  let comments = [];
+  if (diff === 0)      comments.push('🏆 오늘 모든 선수가 완벽하게 균등 출전했습니다!');
+  else if (diff === 1) comments.push('🎯 매우 균등한 출전 분배였습니다! 로테이션이 잘 됐어요!');
+  else if (diff === 2) comments.push('👍 전반적으로 균등했으나 일부 차이가 있었습니다.');
+  else                 comments.push(`⚠️ 출전 횟수 차이가 ${diff}회 났습니다. 다음엔 더 균등하게!`);
+
+  if (restPlayers.length > 0)
+    comments.push(`🛋 ${restPlayers.length}명(${restPlayers.map(p=>p.name).join(', ')})이 휴식을 취했습니다.`);
+
+  if (mvpPlayers.length > 0)
+    comments.push(`🥇 개근상: ${mvpPlayers.map(p=>p.name).join(', ')} (${maxCnt}경기 전 출전!)`);
+
+  gkPlayers.forEach(gk => {
+    const c = playCount[gk.id] || 0;
+    if (c > 0) comments.push(`🧤 GK ${gk.name}님, ${c}경기 수고하셨습니다!`);
+  });
+
+  if (attPlayers.length >= 30)
+    comments.push(`🎉 오늘 ${attPlayers.length}명이나 참여하셨습니다! 성황이었네요!`);
+
+  if (totalGames === 0)
+    comments.push('📌 오늘 아직 경기가 진행되지 않았습니다.');
+
+  comments.push('⚽ 오늘도 즐거운 하루였습니다! 다음 주에 또 만나요~ 👋');
+
+  const statsHtml = `
+    <div style="background:#f8fafc; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+      <div style="font-weight:700; font-size:13px; color:#374151; margin-bottom:8px;">📊 기본 통계</div>
+      <table style="width:100%; font-size:13px; border-collapse:collapse;">
+        <tr><td style="padding:2px 0; color:#6b7280;">출석 인원</td><td style="font-weight:700;">${attPlayers.length}명</td>
+            <td style="padding:2px 0; color:#6b7280;">총 경기</td><td style="font-weight:700;">${totalGames}경기</td></tr>
+        <tr><td style="padding:2px 0; color:#6b7280;">평균 출전</td><td style="font-weight:700;">${avgCnt.toFixed(1)}회</td>
+            <td style="padding:2px 0; color:#6b7280;">휴식자</td><td style="font-weight:700;">${restPlayers.length}명</td></tr>
+        <tr><td style="padding:2px 0; color:#6b7280;">최다 출전</td>
+            <td colspan="3" style="font-weight:700;">${maxCnt}회 (${maxPlayers.map(p=>p.name).join(', ')})</td></tr>
+        <tr><td style="padding:2px 0; color:#6b7280;">최소 출전</td>
+            <td colspan="3" style="font-weight:700;">${minCnt}회 (${minPlayers.map(p=>p.name).join(', ')})</td></tr>
+      </table>
+    </div>`;
+
+  const distHtml = `
+    <div style="background:#f8fafc; border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+      <div style="font-weight:700; font-size:13px; color:#374151; margin-bottom:8px;">📈 출전 횟수 분포</div>
+      <div style="font-family:monospace; font-size:12px; max-height:200px; overflow-y:auto;">
+        ${sorted.map(p => {
+          const bar     = makeBar(p.cnt, maxCnt);
+          const markStr = resting.includes(p.id) ? '🛋' : '';
+          return `<div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;">
+            <span style="min-width:90px; font-size:11px;">${p.name}</span>
+            <span style="${cntColor(p.cnt)}">${bar} ${p.cnt}회</span>
+            <span>${markStr}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+
+  const commentsHtml = `
+    <div style="background:#f0fdf4; border-radius:10px; padding:12px 14px; border-left:4px solid #16a34a;">
+      <div style="font-weight:700; font-size:13px; color:#374151; margin-bottom:8px;">💬 오늘의 한마디</div>
+      ${comments.map(c => `<div style="font-size:13px; margin-bottom:6px;">${c}</div>`).join('')}
+    </div>`;
+
+  document.getElementById('report-content').innerHTML = statsHtml + distHtml + commentsHtml;
+  document.getElementById('report-modal').classList.add('show');
+}
 </script>
 </body>
 </html>
