@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h4 class="m-0">오늘 경기 목록</h4>
+  <div class="d-flex gap-2">
+    <form method="post" action="{{ url_for('scheduler_generate_next') }}">
+      <button class="btn btn-success btn-sm">다음 경기 생성 (11)</button>
+    </form>
+    <form method="post" action="{{ url_for('scheduler_generate_scrimmage') }}">
+      <button class="btn btn-warning btn-sm text-dark">자체게임 생성 (11 vs 11)</button>
+    </form>
+  </div>
+</div>
+
+{% if matches %}
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>경기번호</th>
+        <th>종류</th>
+        <th>전법</th>
+        <th>보기</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in matches %}
+      <tr>
+        <td class="fw-bold">#{{ m.game_no }}</td>
+        <td>
+          {% if m.match_type=='SCRIMMAGE' %}
+            <span class="badge bg-warning text-dark">자체게임</span>
+          {% else %}
+            <span class="badge bg-secondary">내부(한 팀)</span>
+          {% endif %}
+        </td>
+        <td>{{ m.event_flavor.replace('FORM:','') if m.event_flavor else '-' }}</td>
+        <td>
+          {% if m.match_type=='SCRIMMAGE' %}
+            <a class="btn btn-sm btn-primary" href="{{ url_for('scrimmage_by_game', game_no=m.game_no) }}">보기</a>
+          {% else %}
+            <a class="btn btn-sm btn-primary" href="{{ url_for('board_by_game', game_no=m.game_no) }}">보기</a>
+          {% endif %}
+        </td>
+        <td>
+          <form method="post" action="{{ url_for('match_delete', match_id=m.id) }}" class="d-inline"
+                onsubmit="return confirm('#{{ m.game_no }}번 경기를 삭제하시겠습니까?')">
+            <button class="btn btn-sm btn-outline-danger">삭제</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="text-center text-muted py-5">
+  <p>아직 생성된 경기가 없습니다.</p>
+  <p class="small">출석 페이지에서 경기를 생성해주세요.</p>
+</div>
+{% endif %}
+{% endblock %}

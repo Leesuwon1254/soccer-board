@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h4 class="m-0">선수 관리 <span class="badge bg-secondary fs-6">{{ player_data|length }}명</span></h4>
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#pwModal">⚙️ 비밀번호 변경</button>
+    <a class="btn btn-primary btn-sm" href="{{ url_for('player_new') }}">+ 선수 추가</a>
+  </div>
+</div>
+
+<!-- 비밀번호 변경 모달 -->
+<div class="modal fade" id="pwModal" tabindex="-1">
+  <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title fw-bold">🔒 관리자 비밀번호 변경</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="pwAlert" class="d-none alert py-2 small"></div>
+        <div class="mb-3">
+          <label class="form-label fw-bold small">현재 비밀번호</label>
+          <input class="form-control" type="password" id="curPw" placeholder="현재 비밀번호">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold small">새 비밀번호</label>
+          <input class="form-control" type="password" id="newPw" placeholder="새 비밀번호">
+        </div>
+        <div class="mb-2">
+          <label class="form-label fw-bold small">새 비밀번호 확인</label>
+          <input class="form-control" type="password" id="newPw2" placeholder="새 비밀번호 재입력">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btnChangePw">변경</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('btnChangePw').addEventListener('click', async () => {
+  const cur  = document.getElementById('curPw').value;
+  const nw   = document.getElementById('newPw').value;
+  const nw2  = document.getElementById('newPw2').value;
+  const alert = document.getElementById('pwAlert');
+
+  if (!cur || !nw) {
+    alert.className = 'alert alert-warning py-2 small';
+    alert.textContent = '모든 항목을 입력해주세요.';
+    return;
+  }
+  if (nw !== nw2) {
+    alert.className = 'alert alert-warning py-2 small';
+    alert.textContent = '새 비밀번호가 일치하지 않습니다.';
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append('current_password', cur);
+  fd.append('new_password', nw);
+  const res  = await fetch('{{ url_for("change_password") }}', {method:'POST', body: fd});
+  const data = await res.json();
+
+  if (data.success) {
+    alert.className = 'alert alert-success py-2 small';
+    alert.textContent = '비밀번호가 변경되었습니다.';
+    document.getElementById('curPw').value = '';
+    document.getElementById('newPw').value = '';
+    document.getElementById('newPw2').value = '';
+  } else {
+    alert.className = 'alert alert-danger py-2 small';
+    alert.textContent = data.message || '오류가 발생했습니다.';
+  }
+});
+</script>
+
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>이름</th>
+        <th>등급</th>
+        <th>포지션</th>
+        <th>생년월일</th>
+        <th>연락처</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for pd in player_data %}
+      <tr>
+        <td class="fw-bold">{{ pd.player.name }}</td>
+        <td>
+          <span class="badge {% if pd.player.skill_grade=='A' %}bg-danger{% elif pd.player.skill_grade=='B' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+            {{ pd.player.skill_grade }}
+          </span>
+        </td>
+        <td>
+          {% if pd.pos1 %}<span class="badge bg-light text-dark border">{{ pd.pos1 }}</span>{% endif %}
+          {% if pd.pos2 %}<span class="badge bg-light text-dark border">{{ pd.pos2 }}</span>{% endif %}
+          {% if not pd.pos1 and not pd.pos2 %}<span class="text-muted">-</span>{% endif %}
+        </td>
+        <td>{{ pd.player.birth_date or '-' }}</td>
+        <td>{{ pd.player.phone or '-' }}</td>
+        <td class="text-end">
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('player_edit', player_id=pd.player.id) }}">수정</a>
+          <form method="post" action="{{ url_for('player_delete', player_id=pd.player.id) }}" class="d-inline"
+                onsubmit="return confirm('{{ pd.player.name }} 선수를 삭제하시겠습니까?\n출석 기록도 함께 삭제됩니다.')">
+            <button class="btn btn-sm btn-outline-danger">삭제</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="text-center text-muted py-4">등록된 선수가 없습니다. CSV 업로드 또는 직접 추가해주세요.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

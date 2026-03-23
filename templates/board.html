@@ -1,0 +1,42 @@
+
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h4 class="m-0">현재 경기 보드 ({{ match.game_no }}번){% if match.event_flavor %} - {{ match.event_flavor }}{% endif %}</h4>
+  <a class="btn btn-outline-secondary btn-sm" href="/matches">경기목록</a>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-header text-white bg-primary">{{ teamA and (teamA[0].pos and 'BLUE 팀' or 'WORLD 팀') or 'BLUE/WORLD' }}</div>
+      <div class="card-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>포지션</th><th>이름</th><th>등급</th></tr></thead>
+          <tbody>
+          {% for r in teamA %}
+            <tr><td>{{ r.pos }}</td><td>{{ r.name }}</td><td>{{ r.grade }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-header text-white bg-dark">{{ teamB and (teamB[0].pos and 'WHITE 팀' or 'K리그 팀') or 'WHITE/K리그' }}</div>
+      <div class="card-body p-0">
+        <table class="table mb-0">
+          <thead><tr><th>포지션</th><th>이름</th><th>등급</th></tr></thead>
+          <tbody>
+          {% for r in teamB %}
+            <tr><td>{{ r.pos }}</td><td>{{ r.name }}</td><td>{{ r.grade }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

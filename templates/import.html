@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h4 class="m-0">선수 데이터 가져오기</h4>
+  <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('players_list') }}">선수 목록으로</a>
+</div>
+
+<div class="row g-4">
+  <!-- Excel 업로드 -->
+  <div class="col-md-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-header fw-bold">📊 Excel (.xlsx) 업로드</div>
+      <div class="card-body">
+        <p class="text-muted small">엑셀 파일의 열 순서:</p>
+        <table class="table table-sm table-bordered small mb-3">
+          <thead class="table-light"><tr><th>#</th><th>열 이름</th><th>예시</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>No</td><td>1</td></tr>
+            <tr><td>2</td><td>이름 <span class="text-danger">*</span></td><td>홍길동</td></tr>
+            <tr><td>3</td><td>나이</td><td>25</td></tr>
+            <tr><td>4</td><td>능력대</td><td>20대</td></tr>
+            <tr><td>5</td><td>소속/소개</td><td>-</td></tr>
+            <tr><td>6</td><td>성별</td><td>남</td></tr>
+            <tr><td>7</td><td>포지션1</td><td>CB / GK / ST …</td></tr>
+            <tr><td>8</td><td>포지션2</td><td>LB / CM …</td></tr>
+            <tr><td>9</td><td>등급 <span class="text-danger">*</span></td><td>A / B / C</td></tr>
+          </tbody>
+        </table>
+        <p class="text-muted small mb-3">
+          세부 포지션(CB·RB·LB→DF / CM·CAM·CDM→MF / RW·LW·ST·CF→FW)은 자동 변환됩니다.
+        </p>
+        <form method="post" action="{{ url_for('import_csv') }}" enctype="multipart/form-data">
+          <div class="mb-3">
+            <input class="form-control" type="file" name="file" accept=".xlsx,.xls" required>
+          </div>
+          <button class="btn btn-success">Excel 업로드</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- CSV 업로드 -->
+  <div class="col-md-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-header fw-bold">📄 CSV 업로드</div>
+      <div class="card-body">
+        <p class="text-muted small">CSV 헤더 형식:</p>
+        <code class="d-block bg-light p-2 rounded small mb-3">
+          name,skill_grade,position1,position2,birth_date,phone
+        </code>
+        <ul class="small text-muted mb-3">
+          <li>인코딩: UTF-8 (BOM 포함 가능)</li>
+          <li>포지션: GK / DF / MF / FW</li>
+          <li>등급: A / B / C</li>
+          <li>생년월일: YYYY-MM-DD (선택)</li>
+        </ul>
+        <form method="post" action="{{ url_for('import_csv') }}" enctype="multipart/form-data">
+          <div class="mb-3">
+            <input class="form-control" type="file" name="file" accept=".csv" required>
+          </div>
+          <button class="btn btn-primary">CSV 업로드</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

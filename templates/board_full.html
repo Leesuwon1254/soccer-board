@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+{% block content %}
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+
+<div class="d-flex align-items-center justify-content-between mb-2">
+  <div>
+    <h4 class="m-0 fw-bold">보드(자체게임) · {{ match.game_no }}번
+      {% if match.event_flavor %}<span class="text-muted fw-normal fs-6"> {{ match.event_flavor }}</span>{% endif %}
+    </h4>
+    <small class="text-muted">선수 칩을 드래그하여 포지션을 변경할 수 있습니다.</small>
+  </div>
+  <div class="d-flex gap-2">
+    <div class="d-flex align-items-center gap-2">
+      <span class="badge bg-primary px-3 py-2">BLUE (좌)</span>
+      <span class="badge bg-light text-dark border px-3 py-2">WHITE (우)</span>
+    </div>
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('matches') }}">경기목록</a>
+    <button class="btn btn-sm btn-outline-secondary" id="btn-reset">초기배치 재설정</button>
+  </div>
+</div>
+
+<style>
+  * { font-family: 'Noto Sans KR', sans-serif; }
+  .pitch-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto;
+    border-radius: 22px;
+    overflow: hidden;
+  }
+  .pitch-wrap svg { display: block; }
+  .player-chip {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    border-radius: 8px;
+    padding: 5px 9px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    font-weight: 700;
+    font-size: 11.5px;
+    white-space: nowrap;
+    cursor: grab;
+    user-select: none;
+    z-index: 10;
+    border: 2px solid rgba(255,255,255,0.9);
+    transition: box-shadow 0.15s;
+  }
+  .player-chip:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.35); }
+  .player-chip:active { cursor: grabbing; }
+  .player-chip.dragging { box-shadow: 0 12px 32px rgba(0,0,0,0.45); z-index:1000; opacity:0.92; }
+  .chip-blue { background:#dbeafe; color:#1d4ed8; }
+  .chip-blue.gk-chip { background:#2563eb; color:#fff; }
+  .chip-blue small { color:#3b82f6; }
+  .chip-blue.gk-chip small { color:#bfdbfe; }
+  .chip-white { background:#fff; color:#111; }
+  .chip-white.gk-chip { background:#2563eb; color:#fff; }
+  .chip-white small { color:#6b7280; }
+  .chip-white.gk-chip small { color:#bfdbfe; }
+  .player-chip small { display:block; font-size:10px; font-weight:400; margin-top:1px; }
+  .skill-logo { display:inline-block; width:52px; text-align:center; font-size:11px; font-weight:900; line-height:1; vertical-align:middle; letter-spacing:0.5px; }
+  .skill-nike   { font-family:'Arial Black',Impact,sans-serif; font-style:italic; color:#222222; }
+  .skill-adidas { font-family:Arial,Helvetica,sans-serif; font-style:normal; color:#111111; letter-spacing:1px; }
+  .skill-mizuno { font-family:'Arial Black',Impact,sans-serif; font-style:italic; color:#1a1a8c; }
+</style>
+
+<div class="pitch-wrap" id="pitchWrap"
+     style="background:linear-gradient(180deg,#3a9e4f 0%,#2e8b40 100%); aspect-ratio:900/506;">
+  <svg viewBox="0 0 900 506" preserveAspectRatio="none"
+       style="position:absolute;inset:0;width:100%;height:100%;"
+       xmlns="http://www.w3.org/2000/svg">
+    <g fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="2">
+      <rect x="18" y="18" width="864" height="470" rx="2"/>
+      <line x1="450" y1="18" x2="450" y2="488"/>
+      <circle cx="450" cy="253" r="65"/>
+      <circle cx="450" cy="253" r="3" fill="rgba(255,255,255,0.55)" stroke="none"/>
+      <rect x="18" y="148" width="112" height="210"/>
+      <rect x="18" y="198" width="46" height="110"/>
+      <rect x="6"  y="218" width="12" height="70" stroke="rgba(255,255,255,0.7)"/>
+      <circle cx="88" cy="253" r="3" fill="rgba(255,255,255,0.55)" stroke="none"/>
+      <path d="M 130 207 A 65 65 0 0 1 130 299"/>
+      <rect x="770" y="148" width="112" height="210"/>
+      <rect x="836" y="198" width="46" height="110"/>
+      <rect x="882" y="218" width="12" height="70" stroke="rgba(255,255,255,0.7)"/>
+      <circle cx="812" cy="253" r="3" fill="rgba(255,255,255,0.55)" stroke="none"/>
+      <path d="M 770 207 A 65 65 0 0 0 770 299"/>
+      <path d="M 18 36   A 14 14 0 0 1 32 18"/>
+      <path d="M 868 18  A 14 14 0 0 1 882 36"/>
+      <path d="M 18 470  A 14 14 0 0 0 32 488"/>
+      <path d="M 868 488 A 14 14 0 0 0 882 470"/>
+    </g>
+    <text x="55"  y="13" fill="rgba(255,255,255,0.45)" font-size="11" font-family="Noto Sans KR,sans-serif" text-anchor="middle">GK</text>
+    <text x="175" y="13" fill="rgba(255,255,255,0.45)" font-size="11" font-family="Noto Sans KR,sans-serif" text-anchor="middle">DF</text>
+    <text x="310" y="13" fill="rgba(255,255,255,0.45)" font-size="11" font-family="Noto Sans KR,sans-serif" text-anchor="middle">MF</text>
+    <text x="420" y="13" fill="rgba(255,255,255,0.45)" font-size="11" font-family="Noto Sans KR,sans-serif" text-anchor="middle">FW</text>
+    <text x="845" y="13" fill="rgba(255,255,255,0.45)" font-size="11" font-family="Noto Sans KR,sans-serif" text-anchor="middle">GK</text>
+    <text x="725" y="13" fill="rgba(255,255,255,0.45)" font-size="11" font-family="Noto Sans KR,sans-serif" text-anchor="middle">DF</text>
+    <text x="590" y="13" fill="rgba(255,255,255,0.45)" font-size="11" font-family="Noto Sans KR,sans-serif" text-anchor="middle">MF</text>
+    <text x="480" y="13" fill="rgba(255,255,255,0.45)" font-size="11" font-family="Noto Sans KR,sans-serif" text-anchor="middle">FW</text>
+  </svg>
+
+  {% for d in left %}
+  <div class="player-chip chip-blue {{ 'gk-chip' if d.pos == 'GK' else '' }}"
+       data-pos="{{ d.pos }}" data-pid="{{ d.id }}" data-match="{{ match.id }}"
+       data-side="left" data-team="blue"
+       style="left:{{ (d.x / 10)|round(2) }}%; top:{{ (d.y / 6)|round(2) }}%;">
+    {{ d.name }}<small>{{ d.pos }} {{ d.skill | skill_logo }}</small>
+  </div>
+  {% endfor %}
+
+  {% for d in right %}
+  <div class="player-chip chip-white {{ 'gk-chip' if d.pos == 'GK' else '' }}"
+       data-pos="{{ d.pos }}" data-pid="{{ d.id }}" data-match="{{ match.id }}"
+       data-side="right" data-team="white"
+       style="left:{{ (d.x / 10)|round(2) }}%; top:{{ (d.y / 6)|round(2) }}%;">
+    {{ d.name }}<small>{{ d.pos }} {{ d.skill | skill_logo }}</small>
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+const ZONES_LEFT  = [{pos:'GK',maxX:15},{pos:'DF',maxX:28},{pos:'MF',maxX:41},{pos:'FW',maxX:100}];
+const ZONES_RIGHT = [{pos:'FW',maxX:43},{pos:'MF',maxX:57},{pos:'DF',maxX:72},{pos:'GK',maxX:100}];
+
+function detectPos(xPct, side) {
+  const zones = side === 'right' ? ZONES_RIGHT : ZONES_LEFT;
+  return (zones.find(z => xPct <= z.maxX) || zones[zones.length-1]).pos;
+}
+
+function initDrag(chip) {
+  const wrap = document.getElementById('pitchWrap');
+  const side = chip.dataset.side;
+  let dragging = false, offX = 0, offY = 0;
+
+  function start(cx, cy) {
+    dragging = true;
+    chip.classList.add('dragging');
+    const r = wrap.getBoundingClientRect();
+    const lPct = parseFloat(chip.style.left) / 100;
+    const tPct = parseFloat(chip.style.top)  / 100;
+    offX = cx - r.left - lPct * r.width;
+    offY = cy - r.top  - tPct * r.height;
+    chip.style.left = (lPct * r.width) + 'px';
+    chip.style.top  = (tPct * r.height) + 'px';
+  }
+
+  function clampPosition(x, y, team) {
+    if (team === 'blue') x = Math.max(3, Math.min(47, x));
+    else                 x = Math.max(53, Math.min(97, x));
+    y = Math.max(4, Math.min(96, y));
+    return { x, y };
+  }
+
+  function move(cx, cy) {
+    if (!dragging) return;
+    const r = wrap.getBoundingClientRect();
+    let xPct = (cx - r.left - offX) / r.width  * 100;
+    let yPct = (cy - r.top  - offY) / r.height * 100;
+    const clamped = clampPosition(xPct, yPct, chip.dataset.team);
+    chip.style.left = clamped.x + '%';
+    chip.style.top  = clamped.y + '%';
+  }
+
+  async function end(cx, cy) {
+    if (!dragging) return;
+    dragging = false;
+    chip.classList.remove('dragging');
+    const xPct = parseFloat(chip.style.left);
+    const newPos = detectPos(xPct, side);
+    chip.querySelector('small').textContent = newPos;
+    chip.classList.toggle('gk-chip', newPos === 'GK');
+    try {
+      await fetch('/api/reassign', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({match_id:parseInt(chip.dataset.match), player_id:parseInt(chip.dataset.pid), new_pos:newPos})
+      });
+    } catch(e) {}
+  }
+
+  chip.addEventListener('mousedown', e => { e.preventDefault(); start(e.clientX, e.clientY); });
+  document.addEventListener('mousemove', e => move(e.clientX, e.clientY));
+  document.addEventListener('mouseup',   e => end(e.clientX,  e.clientY));
+  chip.addEventListener('touchstart', e => { e.preventDefault(); start(e.touches[0].clientX, e.touches[0].clientY); }, {passive:false});
+  document.addEventListener('touchmove',  e => { if(dragging){ e.preventDefault(); move(e.touches[0].clientX, e.touches[0].clientY); } }, {passive:false});
+  document.addEventListener('touchend',   e => end(e.changedTouches[0].clientX, e.changedTouches[0].clientY));
+}
+
+document.querySelectorAll('.player-chip').forEach(chip => {
+  chip.dataset.initL = chip.style.left;
+  chip.dataset.initT = chip.style.top;
+  initDrag(chip);
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  document.querySelectorAll('.player-chip').forEach(chip => {
+    chip.style.left = chip.dataset.initL;
+    chip.style.top  = chip.dataset.initT;
+    const origPos = chip.dataset.pos;
+    chip.querySelector('small').textContent = origPos;
+    chip.classList.toggle('gk-chip', origPos === 'GK');
+  });
+});
+</script>
+{% endblock %}

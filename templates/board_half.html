@@ -1,0 +1,247 @@
+{% extends 'base.html' %}
+{% block content %}
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+
+<div class="d-flex align-items-center justify-content-between mb-2">
+  <div>
+    <h4 class="m-0 fw-bold">보드(한 팀) · {{ match.game_no }}번
+      {% if match.event_flavor %}<span class="text-muted fw-normal fs-6"> {{ match.event_flavor }}</span>{% endif %}
+    </h4>
+    <small class="text-muted">선수 칩을 드래그하여 포지션을 변경할 수 있습니다.</small>
+  </div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('matches') }}">경기목록</a>
+    <button class="btn btn-sm btn-outline-secondary"
+            onclick="requireAdmin('초기 배치로 되돌립니다.', doResetLayout)">초기배치 재설정</button>
+    <button class="btn btn-sm btn-new-game" id="btn-new-game"
+            onclick="requireAdmin('새로운 경기를 생성합니다.', doNewGame)">🔄 새로운경기</button>
+  </div>
+</div>
+
+<style>
+  * { font-family: 'Noto Sans KR', sans-serif; }
+  .pitch-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto;
+    border-radius: 22px;
+    overflow: hidden;
+  }
+  .pitch-wrap svg { display: block; }
+
+  .player-chip {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    border-radius: 8px;
+    padding: 5px 9px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    font-weight: 700;
+    font-size: 11.5px;
+    white-space: nowrap;
+    cursor: grab;
+    user-select: none;
+    z-index: 10;
+    border: 2px solid rgba(255,255,255,0.9);
+    background: #ffffff;
+    color: #111;
+    transition: box-shadow 0.15s;
+  }
+  .player-chip:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.35); }
+  .player-chip:active { cursor: grabbing; }
+  .player-chip.dragging { box-shadow: 0 12px 32px rgba(0,0,0,0.45); z-index: 1000; opacity: 0.92; }
+  .player-chip.gk-chip { background: #2563eb; color: #fff; border-color: rgba(255,255,255,0.7); }
+  .player-chip small {
+    display: block;
+    font-size: 10px;
+    font-weight: 400;
+    margin-top: 1px;
+    color: #6b7280;
+  }
+  .player-chip.gk-chip small { color: #bfdbfe; }
+  .skill-logo { display:inline-block; width:52px; text-align:center; font-size:11px; font-weight:900; line-height:1; vertical-align:middle; letter-spacing:0.5px; }
+  .skill-nike   { font-family:'Arial Black',Impact,sans-serif; font-style:italic; color:#222222; }
+  .skill-adidas { font-family:Arial,Helvetica,sans-serif; font-style:normal; color:#111111; letter-spacing:1px; }
+  .skill-mizuno { font-family:'Arial Black',Impact,sans-serif; font-style:italic; color:#1a1a8c; }
+  .btn-new-game { background:#16a34a; color:#fff; border:none; font-size:13px; font-weight:600; cursor:pointer; transition:background .15s; }
+  .btn-new-game:hover { background:#15803d; color:#fff; }
+  .btn-new-game:disabled { background:#aaa; cursor:not-allowed; }
+</style>
+
+<div class="pitch-wrap" id="pitchWrap"
+     style="background:linear-gradient(180deg,#3a9e4f 0%,#2e8b40 100%); aspect-ratio:900/506;">
+  <svg viewBox="0 0 900 506" preserveAspectRatio="none"
+       style="position:absolute;inset:0;width:100%;height:100%;"
+       xmlns="http://www.w3.org/2000/svg">
+    <g fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="2">
+      <rect x="18" y="18" width="864" height="470" rx="2"/>
+      <line x1="450" y1="18" x2="450" y2="488"/>
+      <circle cx="450" cy="253" r="65"/>
+      <circle cx="450" cy="253" r="3" fill="rgba(255,255,255,0.55)" stroke="none"/>
+      <rect x="18" y="148" width="112" height="210"/>
+      <rect x="18" y="198" width="46" height="110"/>
+      <rect x="6"  y="218" width="12" height="70" stroke="rgba(255,255,255,0.7)"/>
+      <circle cx="88" cy="253" r="3" fill="rgba(255,255,255,0.55)" stroke="none"/>
+      <path d="M 130 207 A 65 65 0 0 1 130 299"/>
+      <rect x="770" y="148" width="112" height="210"/>
+      <rect x="836" y="198" width="46" height="110"/>
+      <rect x="882" y="218" width="12" height="70" stroke="rgba(255,255,255,0.7)"/>
+      <circle cx="812" cy="253" r="3" fill="rgba(255,255,255,0.55)" stroke="none"/>
+      <path d="M 770 207 A 65 65 0 0 0 770 299"/>
+      <path d="M 18 36   A 14 14 0 0 1 32 18"/>
+      <path d="M 868 18  A 14 14 0 0 1 882 36"/>
+      <path d="M 18 470  A 14 14 0 0 0 32 488"/>
+      <path d="M 868 488 A 14 14 0 0 0 882 470"/>
+    </g>
+    <text x="55"  y="13" fill="rgba(255,255,255,0.45)" font-size="11" font-family="Noto Sans KR,sans-serif" text-anchor="middle">GK</text>
+    <text x="175" y="13" fill="rgba(255,255,255,0.45)" font-size="11" font-family="Noto Sans KR,sans-serif" text-anchor="middle">DF</text>
+    <text x="310" y="13" fill="rgba(255,255,255,0.45)" font-size="11" font-family="Noto Sans KR,sans-serif" text-anchor="middle">MF</text>
+    <text x="420" y="13" fill="rgba(255,255,255,0.45)" font-size="11" font-family="Noto Sans KR,sans-serif" text-anchor="middle">FW</text>
+  </svg>
+
+  {% for d in dots %}
+  <div class="player-chip {{ 'gk-chip' if d.pos == 'GK' else '' }}"
+       data-pos="{{ d.pos }}"
+       data-pid="{{ d.id }}"
+       data-match="{{ match.id }}"
+       data-side="left"
+       style="left:{{ (d.x / 10)|round(2) }}%; top:{{ (d.y / 6)|round(2) }}%;">
+    {{ d.name }}<small>{{ d.pos }} {{ d.skill | skill_logo }}</small>
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+// ── 스펙 포지션 슬롯 (left%, top%) ──────────────────────────────────
+const SPEC_SLOTS = {
+  GK: [{l:7,  t:50}],
+  DF: [{l:21, t:18}, {l:21, t:38}, {l:21, t:62}, {l:21, t:82}],
+  MF: [{l:35, t:22}, {l:35, t:42}, {l:35, t:60}, {l:35, t:78}],
+  FW: [{l:47, t:30}, {l:47, t:70}],
+};
+
+// 선수칩을 스펙 좌표로 초기 배치 + 초기값 저장
+(function applySpecSlots() {
+  const byPos = {GK:[], DF:[], MF:[], FW:[]};
+  document.querySelectorAll('.player-chip').forEach(c => {
+    const pos = c.dataset.pos;
+    if (byPos[pos]) byPos[pos].push(c);
+  });
+  for (const [pos, slots] of Object.entries(SPEC_SLOTS)) {
+    (byPos[pos] || []).forEach((chip, i) => {
+      const slot = slots[i] || slots[slots.length - 1];
+      chip.style.left = slot.l + '%';
+      chip.style.top  = slot.t + '%';
+      chip.dataset.initL = slot.l;
+      chip.dataset.initT = slot.t;
+    });
+  }
+})();
+
+// ── 드래그 (마우스 + 터치) ────────────────────────────────────────────
+function initDrag(chip) {
+  const wrap = document.getElementById('pitchWrap');
+  let dragging = false, offX = 0, offY = 0;
+
+  function start(cx, cy) {
+    dragging = true;
+    chip.classList.add('dragging');
+    const r = wrap.getBoundingClientRect();
+    const lPct = parseFloat(chip.style.left) / 100;
+    const tPct = parseFloat(chip.style.top)  / 100;
+    offX = cx - r.left - lPct * r.width;
+    offY = cy - r.top  - tPct * r.height;
+    chip.style.left = (lPct * r.width) + 'px';
+    chip.style.top  = (tPct * r.height) + 'px';
+  }
+
+  function move(cx, cy) {
+    if (!dragging) return;
+    const r = wrap.getBoundingClientRect();
+    // % 기준으로 제약 적용 (x: 4~49%, y: 5~95%)
+    let xPct = (cx - r.left - offX) / r.width  * 100;
+    let yPct = (cy - r.top  - offY) / r.height * 100;
+    xPct = Math.max(4, Math.min(49, xPct));
+    yPct = Math.max(5, Math.min(95, yPct));
+    chip.style.left = xPct + '%';
+    chip.style.top  = yPct + '%';
+  }
+
+  async function end(cx, cy) {
+    if (!dragging) return;
+    dragging = false;
+    chip.classList.remove('dragging');
+    const xPct = parseFloat(chip.style.left);
+    // 포지션 구역 자동 감지
+    const ZONES = [
+      {pos:'GK', maxX:15}, {pos:'DF', maxX:28},
+      {pos:'MF', maxX:41}, {pos:'FW', maxX:100},
+    ];
+    const newPos = (ZONES.find(z => xPct <= z.maxX) || ZONES[ZONES.length-1]).pos;
+    chip.querySelector('small').textContent = newPos;
+    chip.classList.toggle('gk-chip', newPos === 'GK');
+    // API 호출
+    try {
+      await fetch('/api/reassign', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          match_id:  parseInt(chip.dataset.match),
+          player_id: parseInt(chip.dataset.pid),
+          new_pos:   newPos
+        })
+      });
+    } catch(e) {}
+  }
+
+  chip.addEventListener('mousedown',  e => { e.preventDefault(); start(e.clientX, e.clientY); });
+  document.addEventListener('mousemove', e => move(e.clientX, e.clientY));
+  document.addEventListener('mouseup',   e => end(e.clientX, e.clientY));
+  chip.addEventListener('touchstart', e => { e.preventDefault(); start(e.touches[0].clientX, e.touches[0].clientY); }, {passive:false});
+  document.addEventListener('touchmove',  e => { if(dragging){ e.preventDefault(); move(e.touches[0].clientX, e.touches[0].clientY); } }, {passive:false});
+  document.addEventListener('touchend',   e => end(e.changedTouches[0].clientX, e.changedTouches[0].clientY));
+}
+
+document.querySelectorAll('.player-chip').forEach(initDrag);
+
+// ── 초기배치 재설정 ──────────────────────────────────────────────
+function doResetLayout() {
+  document.querySelectorAll('.player-chip').forEach(chip => {
+    if (chip.dataset.initL !== undefined) {
+      chip.style.left = chip.dataset.initL + '%';
+      chip.style.top  = chip.dataset.initT + '%';
+    }
+    const origPos = chip.dataset.pos;
+    chip.querySelector('small').textContent = origPos;
+    chip.classList.toggle('gk-chip', origPos === 'GK');
+  });
+}
+
+// ── 새로운경기 ────────────────────────────────────────────────────
+async function doNewGame() {
+  const btn = document.getElementById('btn-new-game');
+  btn.disabled = true;
+  btn.textContent = '⏳ 생성 중...';
+  try {
+    const res = await fetch('/api/new_game', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({})
+    });
+    let data;
+    try { data = await res.json(); } catch(_) { data = {}; }
+    if (!res.ok || !data.ok) {
+      alert(data.msg || ('오류 ' + res.status));
+      btn.disabled = false;
+      btn.textContent = '🔄 새로운경기';
+      return;
+    }
+    window.location.href = '/board/' + data.game_no;
+  } catch(e) {
+    alert('새로운경기 생성 실패: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = '🔄 새로운경기';
+  }
+}
+</script>
+{% endblock %}

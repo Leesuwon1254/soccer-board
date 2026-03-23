@@ -1,0 +1,254 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h4 class="m-0">출석 관리 ({{ sess.session_date }})</h4>
+  <div class="d-flex gap-2">
+    <button class="btn btn-success"
+            onclick="requireAdmin('다음 경기(11명)를 생성합니다.', doNextGame)">다음 경기 생성 (11)</button>
+    <button class="btn btn-warning text-dark"
+            onclick="requireAdmin('자체게임(11 vs 11)을 생성합니다.', doScrimmage)">자체게임 생성 (11 vs 11)</button>
+  </div>
+</div>
+
+<style>
+  .pane{
+    height: calc(100vh - 220px);
+    min-height: 420px;
+    overflow: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #fff;
+  }
+  .pane-header{
+    font-weight: 700;
+    padding: 10px 12px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f8fafc;
+    position: sticky; top: 0; z-index: 1;
+  }
+  .cards{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
+    padding: 12px;
+  }
+  .player-card{
+    user-select: none;
+    cursor: pointer;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 12px 10px;
+    display: flex; flex-direction: column; gap: 6px;
+    transition: box-shadow .15s ease, transform .03s ease;
+    background: white;
+  }
+  .player-card:hover{ box-shadow: 0 2px 8px rgba(0,0,0,.08); transform: translateY(-1px); }
+  .player-name{ font-weight: 700 }
+  .badge{ font-size: .8rem }
+  .empty{ color:#6b7280; padding: 16px }
+  .skill-logo { display:inline-block; width:52px; text-align:center; font-size:11px; font-weight:900; line-height:1; vertical-align:middle; letter-spacing:0.5px; }
+  .skill-nike   { font-family:'Arial Black',Impact,sans-serif; font-style:italic; color:#222222; }
+  .skill-adidas { font-family:Arial,Helvetica,sans-serif; font-style:normal; color:#111111; letter-spacing:1px; }
+  .skill-mizuno { font-family:'Arial Black',Impact,sans-serif; font-style:italic; color:#1a1a8c; }
+  .play-count-badge      { display:inline-block; color:#fff; font-size:10px; font-weight:700; padding:1px 6px; border-radius:10px; margin-left:4px; vertical-align:middle; }
+  .play-count-badge.low  { background:#16a34a; }
+  .play-count-badge.mid  { background:#f59e0b; }
+  .play-count-badge.high { background:#dc2626; }
+</style>
+
+<div class="row g-3">
+
+  <!-- 왼쪽: 전체 회원 -->
+  <div class="col-lg-8">
+    <div class="pane">
+      <div class="pane-header d-flex align-items-center justify-content-between">
+        <div>전체 회원</div>
+        <small class="text-muted"><span id="countAll"></span></small>
+      </div>
+      <div id="allList" class="cards">
+        {% for p in players %}
+          {% if p.id not in att_map %}
+          <div class="player-card" data-id="{{ p.id }}" data-name="{{ p.name }}" data-skill="{{ p.skill_grade }}">
+            <div class="player-name">{{ p.name }}</div>
+            <div class="d-flex align-items-center justify-content-between">
+              <span class="badge bg-light text-dark">{{ p.skill_grade | skill_logo }}</span>
+              <span class="text-primary">출석</span>
+            </div>
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- 오른쪽: 오늘 출석 -->
+  <div class="col-lg-4">
+    <div class="pane">
+      <div class="pane-header d-flex align-items-center justify-content-between">
+        <div>오늘 출석</div>
+        <small class="text-muted"><span id="countAtt">{{ att_map|length }}</span>명</small>
+      </div>
+      <div id="attList" class="cards">
+        {% for p in players %}
+          {% if p.id in att_map %}
+          <div class="player-card" data-id="{{ p.id }}" data-name="{{ p.name }}" data-skill="{{ p.skill_grade }}" data-apps="{{ apps_map.get(p.id, 0) }}">
+            <div class="player-name">
+              {{ p.name }}
+              {% set cnt = apps_map.get(p.id, 0) %}
+              {% if cnt > 0 %}
+                {% if cnt <= 2 %}
+                  <span class="play-count-badge low">{{ cnt }}회</span>
+                {% elif cnt <= 4 %}
+                  <span class="play-count-badge mid">{{ cnt }}회</span>
+                {% else %}
+                  <span class="play-count-badge high">{{ cnt }}회</span>
+                {% endif %}
+              {% endif %}
+            </div>
+            <div class="d-flex align-items-center justify-content-between">
+              <span class="badge bg-success">출석 {{ att_map[p.id].checkin_time.strftime('%H:%M:%S') }}</span>
+              <span class="text-danger">해제</span>
+            </div>
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const collator = new Intl.Collator('ko-KR');
+
+  function sortPane(pane){
+    // 전체 회원: 이름 가나다순
+    const cards = Array.from(pane.querySelectorAll('.player-card'));
+    cards.sort((a,b)=> collator.compare(a.dataset.name, b.dataset.name));
+    cards.forEach(c => pane.appendChild(c));
+  }
+
+  function sortAttPane(pane){
+    // 오늘 출석: 출전횟수 오름차순, 동률이면 이름 가나다순
+    const cards = Array.from(pane.querySelectorAll('.player-card'));
+    cards.sort((a,b)=>{
+      const da = parseInt(a.dataset.apps || '0');
+      const db = parseInt(b.dataset.apps || '0');
+      if (da !== db) return da - db;
+      return collator.compare(a.dataset.name, b.dataset.name);
+    });
+    cards.forEach(c => pane.appendChild(c));
+  }
+
+  function makeBadgeHtml(cnt){
+    if (cnt <= 0) return '';
+    const cls = cnt <= 2 ? 'low' : cnt <= 4 ? 'mid' : 'high';
+    return `<span class="play-count-badge ${cls}">${cnt}회</span>`;
+  }
+
+  function updateCounts(){
+    document.getElementById('countAll').textContent =
+      document.getElementById('allList').querySelectorAll('.player-card').length + '명';
+    document.getElementById('countAtt').textContent =
+      document.getElementById('attList').querySelectorAll('.player-card').length;
+  }
+
+  async function toggleAttendance(card){
+    const pid = Number(card.dataset.id);
+    const res = await fetch('{{ url_for("api_toggle_attendance") }}', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({player_id: pid})
+    });
+    const data = await res.json();
+    if(!res.ok || !data.ok){
+      alert(data.msg || '오류가 발생했습니다');
+      return;
+    }
+
+    const badge = card.querySelector('.badge');
+    const label = card.querySelector('.text-primary, .text-danger');
+
+    if(data.state === 'in'){
+      // 출석 처리: apps=0으로 초기화, 뱃지 없음
+      card.dataset.apps = '0';
+      const nameEl = card.querySelector('.player-name');
+      if(nameEl){
+        // 기존 뱃지 제거 후 이름만 남김
+        nameEl.innerHTML = card.dataset.name;
+      }
+      if(badge){ badge.className='badge bg-success'; badge.textContent='출석 ' + (data.time || ''); }
+      if(label){ label.className='text-danger'; label.textContent='해제'; }
+      document.getElementById('attList').appendChild(card);
+      sortAttPane(document.getElementById('attList'));
+    } else {
+      const SKILL_SVGS = {
+        'A': '<span class="skill-logo skill-nike" title="나이키">NIKE</span>',
+        'B': '<span class="skill-logo skill-adidas" title="아디다스">adidas</span>',
+        'C': '<span class="skill-logo skill-mizuno" title="미즈노">Mizuno</span>',
+      };
+      const skill = card.dataset.skill || '';
+      if(badge){ badge.className='badge bg-light text-dark'; badge.innerHTML=SKILL_SVGS[skill] || skill; }
+      if(label){ label.className='text-primary'; label.textContent='출석'; }
+      // 출석 해제: 뱃지 제거
+      const nameEl = card.querySelector('.player-name');
+      if(nameEl) nameEl.innerHTML = card.dataset.name;
+      document.getElementById('allList').appendChild(card);
+      sortPane(document.getElementById('allList'));
+    }
+    updateCounts();
+  }
+
+  document.querySelectorAll('.player-card').forEach(card => {
+    card.addEventListener('click', () => toggleAttendance(card));
+  });
+
+  sortPane(document.getElementById('allList'));
+  sortAttPane(document.getElementById('attList'));
+  updateCounts();
+
+  // ── 관리자 기능: 경기 생성 ─────────────────────────────────────
+  async function doNextGame() {
+    const btn = document.querySelector('[onclick*="doNextGame"]');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ 생성 중...'; }
+    try {
+      const res  = await fetch('/api/new_game', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({})
+      });
+      const data = await res.json();
+      if (data.ok) {
+        window.location.href = '/board/' + data.game_no;
+      } else {
+        alert('❌ 생성 실패: ' + (data.msg || '알 수 없는 오류'));
+        if (btn) { btn.disabled = false; btn.textContent = '다음 경기 생성 (11)'; }
+      }
+    } catch (e) {
+      alert('❌ 오류: ' + e.message);
+      if (btn) { btn.disabled = false; btn.textContent = '다음 경기 생성 (11)'; }
+    }
+  }
+
+  async function doScrimmage() {
+    const btn = document.querySelector('[onclick*="doScrimmage"]');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ 생성 중...'; }
+    try {
+      const res  = await fetch('/api/new_scrimmage', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({})
+      });
+      const data = await res.json();
+      if (data.ok) {
+        window.location.href = '/scrimmage/' + data.game_no;
+      } else {
+        alert('❌ 생성 실패: ' + (data.msg || '알 수 없는 오류'));
+        if (btn) { btn.disabled = false; btn.textContent = '자체게임 생성 (11 vs 11)'; }
+      }
+    } catch (e) {
+      alert('❌ 오류: ' + e.message);
+      if (btn) { btn.disabled = false; btn.textContent = '자체게임 생성 (11 vs 11)'; }
+    }
+  }
+</script>
+{% endblock %}
