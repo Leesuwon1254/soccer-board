@@ -1054,7 +1054,7 @@ function renderBoard(match, areaId) {
   const players = DB.players;
 
   if (!match) {
-    area.innerHTML = '<p class="text-muted text-center py-5">경기가 없습니다.</p>';
+    area.innerHTML = `<div class="pitch-wrap" id="pitchWrap">${FIELD_SVG}<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;"><p style="color:rgba(255,255,255,0.85);font-size:20px;font-weight:700;text-shadow:0 2px 8px rgba(0,0,0,0.6);margin:0;">경기가 없습니다.</p></div></div>`;
     document.getElementById('board-title').textContent = '보드(한 팀)';
     return;
   }
