@@ -398,6 +398,31 @@
     #bench-list::-webkit-scrollbar-thumb:hover { background: #fff; }
     #bench-panel.expanded #bench-header { border-bottom: 1px solid rgba(255,255,255,0.08); }
     #bench-panel.dragging { opacity: 0.88; box-shadow: 0 8px 40px rgba(0,0,0,0.6); }
+
+    /* ── 대기 명단 커스텀 스크롤바 (모바일 대응) ── */
+    #bench-list-wrap { position: relative; }
+    #bench-custom-scroll {
+      display: none;
+      position: absolute;
+      top: 4px; right: 2px; bottom: 4px;
+      width: 10px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 5px;
+      z-index: 5;
+      pointer-events: none;
+    }
+    #bench-custom-thumb {
+      position: absolute;
+      left: 0; right: 0;
+      background: #aaa;
+      border-radius: 5px;
+      min-height: 28px;
+      pointer-events: all;
+      cursor: pointer;
+      touch-action: none;
+      transition: background 0.15s;
+    }
+    #bench-custom-thumb.active { background: #fff; }
   </style>
   <!-- ── PWA 설정 ── -->
   <link rel="manifest" href="manifest.json">
@@ -551,6 +576,7 @@
   </div>
   <div id="bench-list-wrap">
     <div id="bench-list"></div>
+    <div id="bench-custom-scroll"><div id="bench-custom-thumb"></div></div>
   </div>
 </div>
 
@@ -2572,6 +2598,70 @@ document.addEventListener('keydown', e => {
   closePlayerModal();
   closePwChangeModal();
 });
+
+// ================================================================
+// ===== 대기 명단 커스텀 스크롤바 (모바일/태블릿 대응) =====
+// ================================================================
+(function() {
+  const getList  = () => document.getElementById('bench-list');
+  const getTrack = () => document.getElementById('bench-custom-scroll');
+  const getThumb = () => document.getElementById('bench-custom-thumb');
+
+  function updateThumb() {
+    const list  = getList();
+    const track = getTrack();
+    const thumb = getThumb();
+    if (!list || !track || !thumb) return;
+    const scrollH = list.scrollHeight;
+    const clientH = list.clientHeight;
+    if (scrollH <= clientH + 1) { track.style.display = 'none'; return; }
+    track.style.display = 'block';
+    const trackH  = track.clientHeight;
+    const thumbH  = Math.max(28, (clientH / scrollH) * trackH);
+    const thumbTop = (list.scrollTop / (scrollH - clientH)) * (trackH - thumbH);
+    thumb.style.height = thumbH + 'px';
+    thumb.style.top    = Math.min(trackH - thumbH, Math.max(0, thumbTop)) + 'px';
+  }
+
+  let dragging = false, startY = 0, startScrollTop = 0;
+
+  function onDragStart(clientY) {
+    const list = getList(); if (!list) return;
+    dragging = true; startY = clientY; startScrollTop = list.scrollTop;
+    getThumb()?.classList.add('active');
+    document.body.style.userSelect = 'none';
+  }
+  function onDragMove(clientY) {
+    if (!dragging) return;
+    const list  = getList(); const track = getTrack(); const thumb = getThumb();
+    if (!list || !track || !thumb) return;
+    const dy    = clientY - startY;
+    const ratio = dy / Math.max(1, track.clientHeight - thumb.clientHeight);
+    list.scrollTop = startScrollTop + ratio * (list.scrollHeight - list.clientHeight);
+  }
+  function onDragEnd() {
+    if (!dragging) return;
+    dragging = false; getThumb()?.classList.remove('active');
+    document.body.style.userSelect = '';
+  }
+
+  // 스크롤 이벤트 연결
+  const list  = getList();
+  const thumb = getThumb();
+  if (list && thumb) {
+    list.addEventListener('scroll', updateThumb, { passive: true });
+    new MutationObserver(updateThumb).observe(list, { childList: true });
+    if (window.ResizeObserver) new ResizeObserver(updateThumb).observe(list);
+
+    thumb.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); onDragStart(e.clientY); });
+    document.addEventListener('mousemove', e => onDragMove(e.clientY));
+    document.addEventListener('mouseup',   () => onDragEnd());
+
+    thumb.addEventListener('touchstart', e => { e.stopPropagation(); onDragStart(e.touches[0].clientY); }, { passive: true });
+    document.addEventListener('touchmove', e => { if (dragging) { e.preventDefault(); onDragMove(e.touches[0].clientY); } }, { passive: false });
+    document.addEventListener('touchend',  () => onDragEnd());
+  }
+})();
 
 // ================================================================
 // ===== 초기화 =====
