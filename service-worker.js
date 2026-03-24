@@ -1,6 +1,7 @@
 // ⚽ 축구 보드판 Service Worker
-const CACHE_NAME = 'soccer-board-v2';
+const CACHE_NAME = 'soccer-board-v3';
 const ASSETS = [
+  './index.html',
   './soccer_board_v2.html',
   './manifest.json',
   './icon-192.png',
