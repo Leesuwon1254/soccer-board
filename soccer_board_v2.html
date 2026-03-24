@@ -589,11 +589,22 @@
       <h5 class="m-0 fw-bold">선수 관리</h5>
       <button class="btn btn-primary" onclick="requireAdmin('선수를 추가합니다.', openPlayerModal)">+ 선수 추가</button>
     </div>
+    <!-- 필터 탭 -->
+    <div class="d-flex gap-1 flex-wrap mb-2" id="player-filter-tabs">
+      <button class="btn btn-sm btn-primary"          data-filter="all"   onclick="setPlayerFilter('all')">전체</button>
+      <button class="btn btn-sm btn-outline-secondary" data-filter="grade" onclick="setPlayerFilter('grade')">기량</button>
+      <button class="btn btn-sm btn-outline-secondary" data-filter="20"    onclick="setPlayerFilter('20')">20대</button>
+      <button class="btn btn-sm btn-outline-secondary" data-filter="30"    onclick="setPlayerFilter('30')">30대</button>
+      <button class="btn btn-sm btn-outline-secondary" data-filter="40"    onclick="setPlayerFilter('40')">40대</button>
+      <button class="btn btn-sm btn-outline-secondary" data-filter="50"    onclick="setPlayerFilter('50')">50대</button>
+      <button class="btn btn-sm btn-outline-secondary" data-filter="60"    onclick="setPlayerFilter('60')">60대</button>
+      <button class="btn btn-sm btn-outline-secondary" data-filter="70"    onclick="setPlayerFilter('70')">70대이상</button>
+    </div>
     <div class="table-responsive">
       <table class="table table-hover player-table" id="players-table">
         <thead class="table-light">
           <tr>
-            <th>이름</th><th>나이</th><th>등급</th>
+            <th>이름</th><th>생년월일/나이</th><th>등급</th>
             <th>포지션1</th><th>포지션2</th><th>포지션3</th><th>포지션4</th>
             <th>연락처</th><th>관리</th>
           </tr>
@@ -686,9 +697,9 @@
         <input type="text" class="form-control form-control-lg" id="pm-name" placeholder="선수 이름">
       </div>
       <div class="col-4">
-        <label class="form-label fw-bold">나이</label>
-        <input type="number" class="form-control form-control-lg" id="pm-age"
-               min="1" max="99" placeholder="나이">
+        <label class="form-label fw-bold">생년월일</label>
+        <input type="text" class="form-control form-control-lg" id="pm-birthdate"
+               maxlength="8" placeholder="YYMMDD">
       </div>
     </div>
     <div class="mb-3">
@@ -1177,6 +1188,59 @@ function initDrag(chip) {
 // ===== 출석 탭 UI =====
 // ================================================================
 const collator = new Intl.Collator('ko-KR');
+
+// ── 생년월일(YYMMDD) → 나이·연령대 계산 (매년 자동) ──
+function calcAgeFromBirthdate(bd) {
+  if (!bd) return { age: null, decade: null };
+  const s = String(bd).replace(/\D/g, '');
+  if (s.length < 6) return { age: null, decade: null };
+  const today = new Date();
+  let yyyy, mm, dd;
+  if (s.length >= 8) {
+    yyyy = parseInt(s.slice(0, 4));
+    mm   = parseInt(s.slice(4, 6));
+    dd   = parseInt(s.slice(6, 8));
+  } else {
+    const yy = parseInt(s.slice(0, 2));
+    mm = parseInt(s.slice(2, 4));
+    dd = parseInt(s.slice(4, 6));
+    const curYY = today.getFullYear() % 100;
+    yyyy = yy > curYY + 5 ? 1900 + yy : 2000 + yy;
+  }
+  let age = today.getFullYear() - yyyy;
+  if (today.getMonth() + 1 < mm || (today.getMonth() + 1 === mm && today.getDate() < dd)) age--;
+  return { age, decade: Math.floor(age / 10) * 10 };
+}
+
+// ── 생년월일 다양한 형식 → YYMMDD 문자열 ──
+function parseBirthdate(raw) {
+  if (!raw && raw !== 0) return null;
+  const s = String(raw).trim().replace(/\D/g, '');
+  if (s.length === 6) return s;          // YYMMDD
+  if (s.length === 8) return s.slice(2); // YYYYMMDD → YYMMDD
+  return null;
+}
+
+// ── 연락처 자동 포맷 → 010-XXXX-XXXX ──
+function formatPhone(raw) {
+  if (!raw) return null;
+  const d = String(raw).replace(/\D/g, '');
+  if (d.length === 11) return d.slice(0,3)+'-'+d.slice(3,7)+'-'+d.slice(7);
+  if (d.length === 10) return d.slice(0,3)+'-'+d.slice(3,6)+'-'+d.slice(6);
+  return String(raw).trim() || null;
+}
+
+// ── 선수관리 필터 상태 ──
+let _playerFilter = 'all';
+function setPlayerFilter(f) {
+  _playerFilter = f;
+  document.querySelectorAll('#player-filter-tabs button').forEach(btn => {
+    btn.className = btn.dataset.filter === f
+      ? 'btn btn-sm btn-primary'
+      : 'btn btn-sm btn-outline-secondary';
+  });
+  renderPlayers();
+}
 
 function speakWelcome(name) {
   const msg = name ? name + '님 반갑습니다' : '반갑습니다';
@@ -2091,21 +2155,66 @@ function cancelPreview() {
 // ===== 선수 관리 UI =====
 // ================================================================
 function renderPlayers() {
-  const tbody   = document.getElementById('players-tbody');
-  const players = DB.players.slice().sort((a,b) => collator.compare(a.name, b.name));
-  tbody.innerHTML = players.map(p => `
-    <tr>
+  const tbody = document.getElementById('players-tbody');
+  const f     = _playerFilter;
+
+  // 나이 계산 첨부
+  const withAge = DB.players.slice().map(p => {
+    const { age, decade } = p.birthdate
+      ? calcAgeFromBirthdate(p.birthdate)
+      : { age: p.age || null, decade: p.age ? Math.floor(p.age / 10) * 10 : null };
+    return { ...p, _age: age, _decade: decade };
+  });
+
+  let rows;
+  const useGroupSep = (f === 'grade');
+
+  if (f === 'all') {
+    rows = withAge.sort((a, b) => collator.compare(a.name, b.name));
+  } else if (f === 'grade') {
+    const gOrder = { A:0, B:1, C:2 };
+    rows = withAge.sort((a, b) => {
+      const diff = (gOrder[a.skill_grade]??3) - (gOrder[b.skill_grade]??3);
+      return diff !== 0 ? diff : collator.compare(a.name, b.name);
+    });
+  } else {
+    const decade = parseInt(f);
+    rows = withAge
+      .filter(p => decade === 70 ? p._decade >= 70 : p._decade === decade)
+      .sort((a, b) => collator.compare(a.name, b.name));
+  }
+
+  const gLabel = { A:'A등급 (NIKE)', B:'B등급 (adidas)', C:'C등급 (Mizuno)' };
+  let html = '';
+  let lastGrade = null;
+
+  for (const p of rows) {
+    if (useGroupSep && p.skill_grade !== lastGrade) {
+      lastGrade = p.skill_grade;
+      html += `<tr><td colspan="9" class="fw-bold text-center py-1"
+        style="background:#f0f4ff;font-size:13px;letter-spacing:1px;">
+        ${gLabel[p.skill_grade] || p.skill_grade}</td></tr>`;
+    }
+    const bdStr = p.birthdate
+      ? `${p.birthdate} <small class="text-muted">(${p._age ?? '-'}세)</small>`
+      : (p._age ? `${p._age}세` : '-');
+    const phoneStr = formatPhone(p.phone) || '-';
+    html += `<tr>
       <td class="fw-bold">${p.name}</td>
-      <td>${p.age || '-'}</td>
+      <td style="white-space:nowrap;">${bdStr}</td>
       <td>${skillLogoHtml(p.skill_grade)}</td>
-      <td>${p.pos1 || '-'}</td><td>${p.pos2 || '-'}</td>
-      <td>${p.pos3 || '-'}</td><td>${p.pos4 || '-'}</td>
-      <td style="font-size:13px;">${p.phone || '-'}</td>
+      <td>${p.pos1||'-'}</td><td>${p.pos2||'-'}</td>
+      <td>${p.pos3||'-'}</td><td>${p.pos4||'-'}</td>
+      <td style="font-size:13px;">${phoneStr}</td>
       <td>
-        <button class="btn btn-sm btn-outline-primary me-1" onclick="requireAdmin('선수 정보를 수정합니다.', ()=>openPlayerModal(${p.id}))">수정</button>
-        <button class="btn btn-sm btn-outline-danger" onclick="requireAdmin('선수를 삭제합니다.', ()=>deletePlayer(${p.id}))">삭제</button>
+        <button class="btn btn-sm btn-outline-primary me-1"
+          onclick="requireAdmin('선수 정보를 수정합니다.', ()=>openPlayerModal(${p.id}))">수정</button>
+        <button class="btn btn-sm btn-outline-danger"
+          onclick="requireAdmin('선수를 삭제합니다.', ()=>deletePlayer(${p.id}))">삭제</button>
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }
+  tbody.innerHTML = html;
 }
 
 function openPlayerModal(id) {
@@ -2115,9 +2224,9 @@ function openPlayerModal(id) {
     const p = DB.players.find(x => x.id === id);
     if (!p) return;
     document.getElementById('player-modal-title').textContent = '선수 수정';
-    document.getElementById('pm-name').value  = p.name;
-    document.getElementById('pm-age').value   = p.age  || '';
-    document.getElementById('pm-grade').value = p.skill_grade || 'C';
+    document.getElementById('pm-name').value      = p.name;
+    document.getElementById('pm-birthdate').value = p.birthdate || '';
+    document.getElementById('pm-grade').value     = p.skill_grade || 'C';
     document.getElementById('pm-pos1').value  = p.pos1 || '';
     document.getElementById('pm-pos2').value  = p.pos2 || '';
     document.getElementById('pm-pos3').value  = p.pos3 || '';
@@ -2125,7 +2234,7 @@ function openPlayerModal(id) {
     document.getElementById('pm-phone').value = p.phone || '';
   } else {
     document.getElementById('player-modal-title').textContent = '선수 추가';
-    ['pm-name','pm-age','pm-phone'].forEach(id => document.getElementById(id).value = '');
+    ['pm-name','pm-birthdate','pm-phone'].forEach(id => document.getElementById(id).value = '');
     ['pm-grade'].forEach(id => document.getElementById(id).value = 'C');
     ['pm-pos1','pm-pos2','pm-pos3','pm-pos4'].forEach(id => document.getElementById(id).value = '');
   }
@@ -2142,20 +2251,20 @@ function savePlayer() {
   const name  = document.getElementById('pm-name').value.trim();
   if (!name) { alert('이름을 입력하세요.'); return; }
 
-  const age   = parseInt(document.getElementById('pm-age').value) || null;
-  const grade = document.getElementById('pm-grade').value;
-  const pos1  = document.getElementById('pm-pos1').value || null;
-  const pos2  = document.getElementById('pm-pos2').value || null;
-  const pos3  = document.getElementById('pm-pos3').value || null;
-  const pos4  = document.getElementById('pm-pos4').value || null;
-  const phone = document.getElementById('pm-phone').value.trim() || null;
+  const birthdate = document.getElementById('pm-birthdate').value.trim().replace(/\D/g,'') || null;
+  const grade     = document.getElementById('pm-grade').value;
+  const pos1      = document.getElementById('pm-pos1').value || null;
+  const pos2      = document.getElementById('pm-pos2').value || null;
+  const pos3      = document.getElementById('pm-pos3').value || null;
+  const pos4      = document.getElementById('pm-pos4').value || null;
+  const phone     = formatPhone(document.getElementById('pm-phone').value.trim()) || null;
 
   let players = DB.players;
   if (id) {
     const idx = players.findIndex(x => x.id === parseInt(id));
-    if (idx >= 0) players[idx] = { ...players[idx], name, age, skill_grade:grade, pos1, pos2, pos3, pos4, phone };
+    if (idx >= 0) players[idx] = { ...players[idx], name, birthdate, skill_grade:grade, pos1, pos2, pos3, pos4, phone };
   } else {
-    players.push({ id:DB.nextId(players), name, age, skill_grade:grade, pos1, pos2, pos3, pos4, phone, created_at:new Date().toISOString() });
+    players.push({ id:DB.nextId(players), name, birthdate, skill_grade:grade, pos1, pos2, pos3, pos4, phone, created_at:new Date().toISOString() });
   }
   DB.players = players;
   closePlayerModal();
@@ -2207,7 +2316,7 @@ function importExcel(event) {
       const iPos2  = col['포지션2'] ?? 7;
       const iGrade = col['등급']    ?? 8;
       const iPhone = col['연락처']  ?? null;
-      const iAge   = col['나이']    ?? null;
+      const iBD    = col['생년월일'] ?? col['나이'] ?? null;  // 생년월일 또는 나이 컬럼
       const iPos3  = col['포지션3'] ?? null;
       const iPos4  = col['포지션4'] ?? null;
 
@@ -2222,18 +2331,18 @@ function importExcel(event) {
         let grade = String(row[iGrade] || 'C').trim().toUpperCase();
         if (!['A','B','C'].includes(grade)) grade = 'C';
 
-        const pos1  = mapPos(row[iPos1]);
-        const pos2  = mapPos(row[iPos2]);
-        const pos3  = iPos3 !== null ? mapPos(row[iPos3]) : null;
-        const pos4  = iPos4 !== null ? mapPos(row[iPos4]) : null;
-        const phone = iPhone !== null && row[iPhone] ? String(row[iPhone]).trim() : null;
-        const age   = iAge  !== null && row[iAge]   ? parseInt(row[iAge])  || null : null;
+        const pos1      = mapPos(row[iPos1]);
+        const pos2      = mapPos(row[iPos2]);
+        const pos3      = iPos3 !== null ? mapPos(row[iPos3]) : null;
+        const pos4      = iPos4 !== null ? mapPos(row[iPos4]) : null;
+        const phone     = formatPhone(iPhone !== null && row[iPhone] ? String(row[iPhone]).trim() : null);
+        const birthdate = iBD !== null && row[iBD] ? parseBirthdate(row[iBD]) : null;
 
         const existing = players.findIndex(p => p.name === name);
         if (existing >= 0) {
-          players[existing] = { ...players[existing], skill_grade:grade, pos1, pos2, pos3, pos4, phone, age };
+          players[existing] = { ...players[existing], skill_grade:grade, pos1, pos2, pos3, pos4, phone, birthdate };
         } else {
-          players.push({ id:DB.nextId(players), name, age, skill_grade:grade, pos1, pos2, pos3, pos4, phone, created_at:new Date().toISOString() });
+          players.push({ id:DB.nextId(players), name, birthdate, skill_grade:grade, pos1, pos2, pos3, pos4, phone, created_at:new Date().toISOString() });
         }
         cnt++;
       }
