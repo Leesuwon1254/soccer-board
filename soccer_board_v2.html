@@ -167,7 +167,7 @@
     .pitch-wrap svg { display:block; }
     .player-chip {
       position:absolute; transform:translate(-50%,-50%);
-      border-radius:8px; padding:5px 10px;
+      border-radius:8px; padding:3px 6px;
       box-shadow:0 4px 12px rgba(0,0,0,.25);
       font-weight:700; font-size:12px; white-space:nowrap;
       cursor:grab; user-select:none; z-index:10;
@@ -197,7 +197,7 @@
     .player-chip.chip-blue.gk-chip { background:#2563eb; color:#fff; }
     .player-chip.chip-white { background:#fff; color:#111; }
     .player-chip.chip-white.gk-chip { background:#2563eb; color:#fff; }
-    .player-chip small { display:block; font-size:10px; font-weight:400; margin-top:1px; color:#6b7280; }
+    .player-chip small { display:block; font-size:10px; font-weight:400; margin-top:0; color:#6b7280; }
     .player-chip.gk-chip small,
     .player-chip.chip-blue.gk-chip small,
     .player-chip.chip-white.gk-chip small { color:#bfdbfe; }
@@ -328,13 +328,13 @@
     /* ── 선수 칩 확대 (태블릿) ── */
     body.board-fullscreen .player-chip {
       font-size: clamp(14px, 1.7vw, 22px);
-      padding: clamp(7px, 0.9vw, 13px) clamp(12px, 1.4vw, 20px);
+      padding: clamp(4px, 0.54vw, 8px) clamp(7px, 0.84vw, 12px);
       border-radius: 10px;
       border-width: 2.5px;
     }
     body.board-fullscreen .player-chip small {
       font-size: clamp(11px, 1.2vw, 16px);
-      margin-top: 3px;
+      margin-top: 1px;
     }
     body.board-fullscreen .chip-play-badge {
       font-size: clamp(11px, 1.1vw, 15px);
