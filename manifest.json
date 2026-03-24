@@ -4,7 +4,7 @@
   "description": "생활체육 축구단 출석 및 경기 관리 앱",
   "start_url": "./soccer_board_v2.html",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "background_color": "#16a34a",
   "theme_color": "#16a34a",
   "lang": "ko",

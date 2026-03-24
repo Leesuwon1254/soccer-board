@@ -354,9 +354,9 @@
       -webkit-backdrop-filter: blur(12px);
       border: 1.5px solid rgba(22,163,74,0.5);
       border-radius: 14px;
-      overflow: hidden;
+      overflow: visible;
       min-width: 200px; max-width: 280px;
-      user-select: none; touch-action: none;
+      user-select: none; touch-action: pan-y;
     }
     #bench-header {
       display: flex; align-items: center; gap: 8px;
@@ -384,6 +384,7 @@
     #bench-list-wrap {
       max-height: 0; overflow: hidden;
       transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      border-radius: 0 0 13px 13px;
     }
     #bench-list-wrap.open { max-height: 60vh; }
     #bench-list {
@@ -2701,8 +2702,12 @@ document.addEventListener('keydown', e => {
   document.addEventListener('touchend', () => dragEnd());
 
   // bench-list-wrap 열림/닫힘 감지 → syncScrollbar
+  // 패널 open 시 CSS transition(0.35s) 완료 후 한 번 더 호출 (clientH가 0→실제값으로 갱신된 시점)
   const wrap = document.getElementById('bench-list-wrap');
-  if (wrap) new MutationObserver(syncScrollbar).observe(wrap, { attributes: true, attributeFilter: ['class'] });
+  if (wrap) new MutationObserver(() => {
+    syncScrollbar();
+    setTimeout(syncScrollbar, 360);
+  }).observe(wrap, { attributes: true, attributeFilter: ['class'] });
 })();
 
 // ================================================================
