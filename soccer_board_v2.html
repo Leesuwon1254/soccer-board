@@ -387,14 +387,15 @@
     }
     #bench-list-wrap.open { max-height: 60vh; }
     #bench-list {
-      max-height: 60vh; overflow-y: auto;
+      max-height: 60vh; overflow-y: scroll;
       padding: 0 10px 10px 10px;
       scrollbar-width: auto;
-      scrollbar-color: rgba(255,255,255,0.75) rgba(255,255,255,0.1);
+      scrollbar-color: #aaa #333;
     }
-    #bench-list::-webkit-scrollbar { width: 12px; }
-    #bench-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.08); border-radius: 6px; }
-    #bench-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.75); border-radius: 6px; border: 2px solid rgba(10,14,20,0.92); }
+    #bench-list::-webkit-scrollbar { width: 14px !important; }
+    #bench-list::-webkit-scrollbar-track { background: #333 !important; border-radius: 10px; }
+    #bench-list::-webkit-scrollbar-thumb { background: #aaa !important; border-radius: 10px; border: 2px solid #333; }
+    #bench-list::-webkit-scrollbar-thumb:hover { background: #fff !important; }
     #bench-panel.expanded #bench-header { border-bottom: 1px solid rgba(255,255,255,0.08); }
     #bench-panel.dragging { opacity: 0.88; box-shadow: 0 8px 40px rgba(0,0,0,0.6); }
   </style>
@@ -549,7 +550,7 @@
     <span id="bench-handle">⠿</span>
   </div>
   <div id="bench-list-wrap">
-    <div id="bench-list"></div>
+    <div id="bench-list" style="overflow-y:scroll;">
   </div>
 </div>
 
