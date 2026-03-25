@@ -258,6 +258,34 @@
       overflow: hidden;
     }
 
+    /* ── 보드 무입력 안내 문구 ── */
+    #board-idle-hint {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 92%;
+      background: rgba(0,0,0,0.75);
+      color: #FFD700;
+      font-size: 1.4rem;
+      font-weight: 700;
+      text-align: center;
+      padding: 16px 24px;
+      border-radius: 8px;
+      border: 2px solid #FF8C00;
+      z-index: 9999;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      animation: boardIdleBlink 0.9s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes boardIdleBlink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.2; }
+    }
+
     /* ── 상단 오버레이 ── */
     #board-fs-topbar {
       position: fixed;
@@ -563,6 +591,7 @@
 
 <!-- 최초 진입 힌트 -->
 <div id="board-touch-hint">👆 화면을 터치하면 메뉴가 나타납니다</div>
+<div id="board-idle-hint">⚠️ 선수 구성이 완료되었다면 확인(저장) 버튼을 눌러 경기를 확정하세요!</div>
 
 <!-- ══════════ 탭: 보드 ══════════ -->
 <div id="tab-board" class="tab-content-panel">
@@ -2563,11 +2592,13 @@ function showTab(name) {
     document.querySelector('.tab-nav').style.display = 'none';
     _boardShowOverlay();
     if (_previewMatch) showPreviewMode(); else refreshBoardSelect();
+    _boardIdleAttach();
   } else {
     document.body.classList.remove('board-fullscreen');
     document.querySelector('.tab-nav').style.display = '';
     _boardHideOverlay(true);
     document.getElementById('bench-panel').style.display = 'none';
+    _boardIdleDetach();
   }
 
   if (name === 'attendance') renderAttendance();
@@ -2644,6 +2675,31 @@ function initBenchPanel() {
     if (dragging) { e.preventDefault(); dragMove(e.touches[0].clientX, e.touches[0].clientY); }
   }, { passive: false });
   document.addEventListener('touchend', () => dragEnd());
+}
+
+// ── 보드 무입력 안내 ──
+let _boardIdleTimer = null;
+const _boardIdleEvents = ['mousemove', 'mousedown', 'touchstart', 'touchmove', 'keydown'];
+
+function _boardIdleShow() {
+  document.getElementById('board-idle-hint').style.display = '';
+}
+function _boardIdleHide() {
+  document.getElementById('board-idle-hint').style.display = 'none';
+}
+function _boardIdleReset() {
+  _boardIdleHide();
+  clearTimeout(_boardIdleTimer);
+  _boardIdleTimer = setTimeout(_boardIdleShow, 5000);
+}
+function _boardIdleAttach() {
+  _boardIdleEvents.forEach(ev => document.addEventListener(ev, _boardIdleReset, { passive: true }));
+  _boardIdleReset();
+}
+function _boardIdleDetach() {
+  _boardIdleEvents.forEach(ev => document.removeEventListener(ev, _boardIdleReset));
+  clearTimeout(_boardIdleTimer);
+  _boardIdleHide();
 }
 
 // ── 보드 오버레이 제어 ──
