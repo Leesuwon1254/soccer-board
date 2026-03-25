@@ -12,13 +12,6 @@ const ASSETS = [
   'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
 ];
 
-// 페이지에서 SKIP_WAITING 메시지 수신 시 즉시 활성화
-self.addEventListener('message', event => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-});
-
 // 설치: 모든 파일 캐시
 self.addEventListener('install', event => {
   event.waitUntil(
