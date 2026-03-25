@@ -2907,10 +2907,33 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./service-worker.js')
       .then(function(reg) {
         console.log('✅ Service Worker 등록 완료:', reg.scope);
+
+        // 새 SW 대기 중 감지 → 업데이트 알림
+        reg.addEventListener('updatefound', function() {
+          const newWorker = reg.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener('statechange', function() {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // 이전 SW가 있는 상태에서 새 SW 설치 완료 → 업데이트 알림
+              if (confirm('🆕 새 버전이 있습니다.\n업데이트 하시겠습니까?')) {
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
+              }
+            }
+          });
+        });
       })
       .catch(function(err) {
         console.warn('Service Worker 등록 실패:', err);
       });
+
+    // SW가 활성화되어 페이지 제어권이 바뀌면 자동 새로고침
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function() {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
+    });
   });
 }
 
@@ -3125,5 +3148,13 @@ function showPastReportDetail(dateKey) {
      <div style="font-weight:700; font-size:13px; color:#374151; margin-bottom:8px;">${y}-${m}-${day} 리포트</div>` + html;
 }
 </script>
+
+<!-- 버전 표시 -->
+<div id="app-version" style="
+  position:fixed; bottom:6px; right:10px; z-index:9000;
+  font-size:11px; color:rgba(150,150,150,0.55);
+  pointer-events:none; user-select:none; letter-spacing:0.3px;
+">v3.2.0</div>
+
 </body>
 </html>

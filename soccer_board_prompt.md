@@ -134,3 +134,37 @@ project/
 - DB에 선수가 부족한 포지션은 **랜덤 선발**로 채워줘
 - 선수 이름이 길 경우 카드 너비 자동 조정 (`white-space: nowrap` 유지)
 - 모바일 터치 드래그도 반드시 지원할 것
+
+---
+
+## 🏷️ 버전 관리 규칙 (Semantic Versioning)
+
+버전 형식: `vMAJOR.MINOR.PATCH` (예: `v3.2.0`)
+
+| 버전 구분 | 올리는 조건 | 예시 |
+|-----------|------------|------|
+| **patch** (`v3.2.x`) | 오타 수정, 문구 변경, 색상 변경 등 아주 작은 수정 | v3.2.0 → v3.2.1 |
+| **minor** (`v3.x.0`) | 기능 추가, UI 개선, 새로운 탭/모달 추가 등 중간 업데이트 | v3.2.0 → v3.3.0 |
+| **major** (`vX.0.0`) | 전체 개편, 구조 변경, 파일명 변경 등 큰 변화 | v3.2.0 → v4.0.0 |
+
+### 버전 올릴 때 수정해야 하는 파일
+
+1. **`soccer_board_v3.html`** 하단 `#app-version` div 텍스트
+2. **`config.json`** → `"version"` 및 `"updated"` 필드
+3. **`service-worker.js`** → `CACHE_NAME` 값 (`soccer-board-vX.X.X`)
+
+### 커밋 메시지 규칙
+
+```
+vX.X.X: 변경 내용 한 줄 요약
+```
+
+예시:
+- `v3.2.1: 보드 안내 문구 오타 수정`
+- `v3.3.0: 출석 탭 통계 차트 추가`
+- `v4.0.0: 전체 UI 개편 및 다중 팀 지원`
+
+### GitHub 릴리스 태그
+
+- 버전 올릴 때마다 `git tag vX.X.X` 후 `git push origin vX.X.X`
+- major / minor 업데이트는 GitHub Releases에 릴리스 노트 작성 권장
