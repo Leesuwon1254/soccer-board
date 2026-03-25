@@ -2682,7 +2682,7 @@ let _boardIdleTimer = null;
 const _boardIdleEvents = ['mousemove', 'mousedown', 'touchstart', 'touchmove', 'keydown'];
 
 function _boardIdleShow() {
-  document.getElementById('board-idle-hint').style.display = '';
+  document.getElementById('board-idle-hint').style.display = 'block';
 }
 function _boardIdleHide() {
   document.getElementById('board-idle-hint').style.display = 'none';
@@ -2690,7 +2690,7 @@ function _boardIdleHide() {
 function _boardIdleReset() {
   _boardIdleHide();
   clearTimeout(_boardIdleTimer);
-  _boardIdleTimer = setTimeout(_boardIdleShow, 5000);
+  _boardIdleTimer = setTimeout(_boardIdleShow, 3000);
 }
 function _boardIdleAttach() {
   _boardIdleEvents.forEach(ev => document.addEventListener(ev, _boardIdleReset, { passive: true }));
