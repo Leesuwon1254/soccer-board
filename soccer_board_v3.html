@@ -1621,6 +1621,9 @@ function showPreviewMode() {
   const header = document.getElementById('board-preview-header');
   header.style.display    = 'flex';
 
+  // 미리보기(경기 구성) 상태 → 안내 문구 타이머 재시작
+  _boardIdleAttach();
+
   document.getElementById('preview-banner-text').textContent =
     '⚠️ 미리보기 모드';
   document.getElementById('preview-confirm-btn').textContent = '✅ 확인 (저장)';
@@ -2157,6 +2160,9 @@ function confirmBoard() {
 
   // 저장 완료 후 5초 뒤 오버레이 숨김
   _boardResetTimer();
+
+  // 저장 완료 → 안내 문구 즉시 숨기고 타이머 영구 중단
+  _boardIdleDetach();
 }
 
 // ── 취소 ──
