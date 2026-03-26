@@ -239,6 +239,7 @@
     }
 
     /* ── 보드 풀스크린 ── */
+    body.board-fullscreen { overscroll-behavior-y: none; } /* Chrome pull-to-refresh 방지 */
     body.board-fullscreen .pitch-wrap {
       max-width: none;
       width: min(100vw, calc(100vh * 900 / 506));
@@ -257,6 +258,18 @@
       justify-content: center;
       overflow: hidden;
     }
+
+    /* ── 보드 스와이프 힌트 ── */
+    #board-swipe-down-hint {
+      display: none;
+      position: fixed;
+      bottom: 60px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.7); color: #fff;
+      font-size: 13px; padding: 8px 20px; border-radius: 20px;
+      z-index: 9999; pointer-events: none;
+      opacity: 0; transition: opacity 0.3s;
+    }
+    body.board-fullscreen #board-swipe-down-hint { display: block; }
 
     /* ── 보드 무입력 안내 문구 ── */
     #board-idle-hint {
@@ -374,8 +387,8 @@
     /* ── 대기 명단 패널 ── */
     #bench-panel {
       position: fixed;
-      right: 16px; top: 50%;
-      transform: translateY(-50%);
+      right: 16px; top: 70px;
+      transform: none;
       z-index: 30;
       background: rgba(10,14,20,0.92);
       backdrop-filter: blur(12px);
@@ -469,7 +482,7 @@
 <nav class="tab-nav">
   <div class="tab-nav-left">
     <button class="tab-btn active" onclick="showTab('attendance')">출석</button>
-    <button class="tab-btn" onclick="showTab('board')">보드(한 팀)</button>
+    <button class="tab-btn" onclick="showTab('board')">보드</button>
     <button class="tab-btn" onclick="showTab('players')">선수관리</button>
     <button class="tab-btn" onclick="showTab('matches')">경기목록</button>
   </div>
@@ -544,7 +557,7 @@
     <!-- 왼쪽: 탭 버튼 -->
     <div class="fs-tab-btns">
       <button class="fs-tab-btn" onclick="showTab('attendance')">출석</button>
-      <button class="fs-tab-btn fs-tab-active">보드(한 팀)</button>
+      <button class="fs-tab-btn fs-tab-active">보드</button>
       <button class="fs-tab-btn" onclick="showTab('players')">선수관리</button>
       <button class="fs-tab-btn" onclick="showTab('matches')">경기목록</button>
     </div>
@@ -561,7 +574,7 @@
 
     <!-- 중앙: 경기 제목 -->
     <div style="flex:1; min-width:0; padding:0 12px;">
-      <div id="board-title" style="font-size:16px; font-weight:800; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">보드(한 팀)</div>
+      <div id="board-title" style="font-size:16px; font-weight:800; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">보드</div>
     </div>
 
     <!-- 오른쪽: 경기 선택 + 새로운경기 -->
@@ -592,6 +605,7 @@
 <!-- 최초 진입 힌트 -->
 <div id="board-touch-hint">👆 화면을 터치하면 메뉴가 나타납니다</div>
 <div id="board-idle-hint">⚠️ 선수 구성이 완료되었다면 확인(저장) 버튼을 눌러 경기를 확정하세요!</div>
+<div id="board-swipe-down-hint">☝️ 위로 스와이프하면 출석 화면으로 이동합니다</div>
 
 <!-- ══════════ 탭: 보드 ══════════ -->
 <div id="tab-board" class="tab-content-panel">
@@ -1132,7 +1146,7 @@ function renderBoard(match, areaId) {
 
   if (!match) {
     area.innerHTML = `<div class="pitch-wrap" id="pitchWrap">${FIELD_SVG}<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;"><p style="color:rgba(255,255,255,0.85);font-size:20px;font-weight:700;text-shadow:0 2px 8px rgba(0,0,0,0.6);margin:0;">경기가 없습니다.</p></div></div>`;
-    document.getElementById('board-title').textContent = '보드(한 팀)';
+    document.getElementById('board-title').textContent = '보드';
     return;
   }
 
@@ -2141,9 +2155,9 @@ function confirmBoard() {
   const benchWrapEl  = document.getElementById('bench-list-wrap');
   benchPanelEl.style.display    = 'none';
   benchPanelEl.style.left       = '';
-  benchPanelEl.style.top        = '';
+  benchPanelEl.style.top        = '70px';
   benchPanelEl.style.right      = '16px';
-  benchPanelEl.style.transform  = 'translateY(-50%)';
+  benchPanelEl.style.transform  = 'none';
   benchPanelEl._benchInited     = false;
   if (benchWrapEl) benchWrapEl.classList.remove('open');
   benchPanelEl.classList.remove('expanded');
@@ -2176,9 +2190,9 @@ function cancelPreview() {
   const benchWrapEl2  = document.getElementById('bench-list-wrap');
   benchPanelEl2.style.display   = 'none';
   benchPanelEl2.style.left      = '';
-  benchPanelEl2.style.top       = '';
+  benchPanelEl2.style.top       = '70px';
   benchPanelEl2.style.right     = '16px';
-  benchPanelEl2.style.transform = 'translateY(-50%)';
+  benchPanelEl2.style.transform = 'none';
   benchPanelEl2._benchInited    = false;
   if (benchWrapEl2) benchWrapEl2.classList.remove('open');
   benchPanelEl2.classList.remove('expanded');
@@ -2781,6 +2795,51 @@ document.addEventListener('keydown', e => {
 });
 
 // ================================================================
+// ===== 보드 탭 스와이프 제스처 =====
+// 위로 스와이프 → 출석 화면 이동
+// 아래로 스와이프 → 텍스트 힌트만 표시 (이동 없음)
+// 다른 탭에서는 동작하지 않음
+// ================================================================
+(function() {
+  let _swipeStartY = 0;
+  let _swipeStartX = 0;
+
+  document.addEventListener('touchstart', function(e) {
+    _swipeStartY = e.touches[0].clientY;
+    _swipeStartX = e.touches[0].clientX;
+  }, { passive: true });
+
+  document.addEventListener('touchend', function(e) {
+    if (!document.body.classList.contains('board-fullscreen')) return;
+
+    const endY   = e.changedTouches[0].clientY;
+    const endX   = e.changedTouches[0].clientX;
+    const deltaY = endY - _swipeStartY;
+    const deltaX = endX - _swipeStartX;
+
+    // 수직 스와이프만 처리 (수평 이동이 더 크면 무시)
+    if (Math.abs(deltaX) >= Math.abs(deltaY)) return;
+    // 최소 이동거리 80px
+    if (Math.abs(deltaY) < 80) return;
+    // 선수 칩·대기 패널 위에서 시작된 제스처 무시
+    const startEl = document.elementFromPoint(_swipeStartX, _swipeStartY);
+    if (startEl?.closest?.('.player-chip, #bench-panel')) return;
+
+    if (deltaY < 0) {
+      // 위로 스와이프 → 출석 화면
+      showTab('attendance');
+    } else {
+      // 아래로 스와이프 → 힌트 텍스트만 표시
+      const hint = document.getElementById('board-swipe-down-hint');
+      if (!hint) return;
+      hint.style.opacity = '1';
+      clearTimeout(hint._timer);
+      hint._timer = setTimeout(() => { hint.style.opacity = '0'; }, 1800);
+    }
+  }, { passive: true });
+})();
+
+// ================================================================
 // ===== 대기 명단 커스텀 스크롤바 =====
 // ================================================================
 (function() {
@@ -2895,6 +2954,14 @@ document.addEventListener('keydown', e => {
 (function init() {
   getOrCreateSession();
   renderAttendance();
+
+  // speechSynthesis voices 미리 로드 → 첫 출석 버튼 클릭 시 딜레이 방지
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.addEventListener('voiceschanged', function() {
+      window.speechSynthesis.getVoices();
+    });
+  }
 })();
 </script>
 
@@ -3158,7 +3225,7 @@ function showPastReportDetail(dateKey) {
   position:fixed; bottom:10px; right:10px; z-index:99999;
   font-size:12px; color:rgba(150,150,150,0.8);
   pointer-events:none; user-select:none; letter-spacing:0.3px;
-">v3.2.2</div>
+">v3.2.3</div>
 
 </body>
 </html>
