@@ -2973,6 +2973,8 @@ document.addEventListener('keydown', e => {
 // → 현재 캐시 목록과 비교 → 불일치 시 모든 캐시 삭제 후 자동 새로고침
 async function checkAndUpdate() {
   if (!navigator.onLine) return;
+  // 이미 이번 세션에서 업데이트한 경우 무한루프 방지
+  if (sessionStorage.getItem('sw_updated')) return;
   try {
     // 캐시 무시하고 최신 SW 파일 가져오기
     const res  = await fetch('./service-worker.js?_=' + Date.now(), { cache: 'no-store' });
@@ -2983,8 +2985,9 @@ async function checkAndUpdate() {
 
     const cacheKeys = await caches.keys();
     if (!cacheKeys.includes(serverCache)) {
-      // 버전 불일치 → 모든 캐시 삭제 후 새로고침
+      // 버전 불일치 → 플래그 저장 후 캐시 삭제 → 새로고침
       console.log('🔄 새 버전 감지:', serverCache, '→ 캐시 초기화 후 새로고침');
+      sessionStorage.setItem('sw_updated', '1');
       await Promise.all(cacheKeys.map(k => caches.delete(k)));
       window.location.reload();
     }
