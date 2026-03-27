@@ -1,6 +1,6 @@
 {
-  "name": "축구 보드판",
-  "short_name": "축구보드",
+  "name": "AI FootManager",
+  "short_name": "FootManager",
   "description": "생활체육 축구단 출석 및 경기 관리 앱",
   "start_url": "./soccer_board_v3.html",
   "scope": "./",
