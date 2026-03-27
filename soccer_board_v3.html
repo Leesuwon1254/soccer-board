@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>⚽ 축구 보드판 v2</title>
+  <title>⚽ 축구 보드판 v3</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
@@ -139,9 +139,10 @@
 
     /* ── 스킬 로고 ── */
     .skill-logo { display:inline-block; width:52px; text-align:center; font-size:11px; font-weight:900; line-height:1; vertical-align:middle; }
-    .skill-nike   { font-family:'Arial Black',Impact,sans-serif; font-style:italic; color:#222; }
+    .skill-nike   { font-family:'Arial Black',Impact,sans-serif; font-style:italic; color:#16a34a; }
     .skill-adidas { font-family:Arial,Helvetica,sans-serif; letter-spacing:1px; color:#111; }
     .skill-mizuno { font-family:'Arial Black',Impact,sans-serif; font-style:italic; color:#1a1a8c; }
+    .skill-puma   { font-family:'Arial Black',Impact,sans-serif; font-style:italic; color:#c0392b; }
 
     /* ── 출석 패널 ── */
     .att-pane {
@@ -240,6 +241,9 @@
 
     /* ── 보드 풀스크린 ── */
     body.board-fullscreen { overscroll-behavior-y: none; } /* Chrome pull-to-refresh 방지 */
+    body.board-fullscreen #tab-attendance,
+    body.board-fullscreen #tab-players,
+    body.board-fullscreen #tab-matches { display: none !important; }
     body.board-fullscreen .pitch-wrap {
       max-width: none;
       width: min(100vw, calc(100vh * 900 / 506));
@@ -317,12 +321,13 @@
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       border-bottom: 1px solid rgba(255,255,255,0.08);
-      padding: 0 18px;
+      padding: 0 12px;
       height: 70px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 8px;
+      overflow: hidden;
     }
     .fs-tab-btns { display: flex; gap: 4px; }
     .fs-tab-btn {
@@ -509,7 +514,7 @@
 <div id="tab-attendance" class="tab-content-panel active">
   <div class="container-fluid py-3">
     <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-      <h5 class="m-0 fw-bold" id="session-date-label"></h5>
+      <h5 class="m-0 fw-bold" id="session-date-label"></h5><span id="att-live-badge"></span>
       <div class="d-flex gap-2 flex-wrap">
         <button class="btn btn-success"
                 onclick="requireAdmin('다음 경기(11명)를 생성합니다.', doNextGame)">경기 생성 (11명)</button>
@@ -539,7 +544,7 @@
         <div class="att-pane">
           <div class="att-pane-header">
             <span>오늘 출석</span>
-            <small class="text-muted"><span id="count-att">0</span>명</small>
+            <small class="text-muted"><span id="count-att">0명</span></small>
           </div>
           <div class="att-pane-body">
             <div id="att-list" class="cards-grid"></div>
@@ -558,13 +563,11 @@
     <div class="fs-tab-btns">
       <button class="fs-tab-btn" onclick="showTab('attendance')">출석</button>
       <button class="fs-tab-btn fs-tab-active">보드</button>
-      <button class="fs-tab-btn" onclick="showTab('players')">선수관리</button>
       <button class="fs-tab-btn" onclick="showTab('matches')">경기목록</button>
     </div>
 
     <!-- 미리보기 배너 (평소 숨김) -->
-    <div id="board-preview-header" style="display:none; align-items:center; gap:8px; flex-shrink:0;">
-      <span style="font-size:13px; color:#f59e0b;">⚠️ 미리보기 모드</span>
+    <div id="board-preview-header" style="display:none; flex:1; align-items:center; gap:8px; min-width:0;">
       <button id="preview-confirm-btn" class="btn btn-sm btn-success"
               onclick="confirmBoard()">✅ 확인 (저장)</button>
       <button id="preview-cancel-btn" class="btn btn-sm btn-outline-secondary"
@@ -572,18 +575,16 @@
       <span id="preview-banner-text" style="font-size:13px; font-weight:700;"></span>
     </div>
 
-    <!-- 중앙: 경기 제목 -->
-    <div style="flex:1; min-width:0; padding:0 12px;">
-      <div id="board-title" style="font-size:16px; font-weight:800; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">보드</div>
-    </div>
-
-    <!-- 오른쪽: 경기 선택 + 새로운경기 -->
-    <div style="display:flex; gap:8px; align-items:center; flex-shrink:0;">
+    <!-- 중앙: 경기 제목 + 경기 선택 + 새로운경기 -->
+    <div id="board-normal-controls" style="flex:1; display:flex; align-items:center; gap:8px; min-width:0;">
+      <div style="min-width:0; overflow:hidden;">
+        <div id="board-title" style="font-size:16px; font-weight:800; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">보드</div>
+      </div>
       <select id="board-game-select" class="form-select form-select-sm"
-              style="width:auto; background:#1e2530; color:#fff; border-color:#555; font-size:14px;"
+              style="width:auto; background:#1e2530; color:#fff; border-color:#555; font-size:14px; flex-shrink:0;"
               onchange="renderBoardByGame()"></select>
       <button class="btn btn-success btn-sm"
-              style="font-size:14px; padding:7px 14px; font-weight:700; white-space:nowrap;"
+              style="font-size:14px; padding:7px 14px; font-weight:700; white-space:nowrap; flex-shrink:0;"
               onclick="requireAdmin('새로운 경기를 생성합니다.', doNextGame)">
         🔄 새로운경기
       </button>
@@ -632,6 +633,8 @@
       <h5 class="m-0 fw-bold">선수 관리</h5>
       <button class="btn btn-primary" onclick="requireAdmin('선수를 추가합니다.', openPlayerModal)">+ 선수 추가</button>
     </div>
+    <!-- 등급 통계 뱃지 -->
+    <div class="d-flex gap-1 flex-wrap mb-2" id="grade-stat-badges"></div>
     <!-- 필터 탭 -->
     <div class="d-flex gap-1 flex-wrap mb-2" id="player-filter-tabs">
       <button class="btn btn-sm btn-primary"          data-filter="all"   onclick="setPlayerFilter('all')">전체</button>
@@ -759,6 +762,7 @@
         <option value="A">A (NIKE)</option>
         <option value="B">B (adidas)</option>
         <option value="C" selected>C (Mizuno)</option>
+        <option value="D">D (PUMA)</option>
       </select>
     </div>
     <div class="row g-2 mb-3">
@@ -849,7 +853,7 @@ function getOrCreateSession() {
 // ================================================================
 // ===== 알고리즘 =====
 // ================================================================
-const SKILL_RANK = { A:3, B:2, C:1 };
+const SKILL_RANK = { A:4, B:3, C:2, D:1 };
 const POS_CODES  = ['GK','DF','MF','FW'];
 
 // 선수가 해당 포지션 가능 여부 (포지션 1~4 전부 체크)
@@ -944,7 +948,7 @@ function assignPositions(cands) {
 // 로테이션 선발 (방식 B) — 직전 경기 배제 + 나이 어린 순 보충
 function selectFinal11(cands, prevIds) {
   const sortKey = c => {
-    const skill = { A:0, B:1, C:2 }[c.player.skill_grade] ?? 3;
+    const skill = { A:0, B:1, C:2, D:3 }[c.player.skill_grade] ?? 4;
     const age   = c.player.age || 99;
     return [c.games_played, skill, age];
   };
@@ -1064,6 +1068,7 @@ function skillLogoHtml(skill) {
     A: '<span class="skill-logo skill-nike">NIKE</span>',
     B: '<span class="skill-logo skill-adidas">adidas</span>',
     C: '<span class="skill-logo skill-mizuno">Mizuno</span>',
+    D: '<span class="skill-logo skill-puma">PUMA</span>',
   };
   return map[skill] || skill;
 }
@@ -1153,7 +1158,7 @@ function renderBoard(match, areaId) {
   const isScrimmage = match.match_type === 'SCRIMMAGE';
   if (match.game_no > 0) {
     document.getElementById('board-title').textContent =
-      `보드(${isScrimmage ? '자체게임' : '한 팀'}) · ${match.game_no}${match.match_type === 'SCRIMMAGE' ? '자체게임' : '경기'} ${match.event_flavor || ''}`;
+      `보드(${isScrimmage ? '자체게임' : '한 팀'}) · ${match.game_no}번 ${match.match_type === 'SCRIMMAGE' ? '자체게임' : '경기'} ${match.event_flavor || ''}`;
   }
 
   const teams = match.teams || [];
@@ -1188,7 +1193,7 @@ function refreshBoardSelect(targetGameNo) {
   const ms   = DB.matches.filter(m => m.session_id === sess.id).sort((a,b) => b.game_no - a.game_no);
   const sel  = document.getElementById('board-game-select');
   sel.innerHTML = ms.map(m =>
-    `<option value="${m.game_no}">${m.game_no}${m.match_type === 'SCRIMMAGE' ? '자체게임' : '경기'}</option>`
+    `<option value="${m.game_no}">${m.game_no}번 ${m.match_type === 'SCRIMMAGE' ? '자체게임' : '경기'}</option>`
   ).join('');
   const target = targetGameNo || (ms.length ? ms[0].game_no : null);
   if (target) sel.value = target;
@@ -1368,8 +1373,10 @@ function renderAttendance() {
     const card = document.createElement('div');
     card.className = 'player-card';
     card.dataset.id = p.id;
+    const ageInfo = p.birthdate ? calcAgeFromBirthdate(p.birthdate) : { age: null };
+    const ageStr  = ageInfo.age ? ` <small class="text-muted">(${ageInfo.age}세)</small>` : '';
     card.innerHTML = `
-      <div class="player-name">${p.name}${posBadgeHtml(p.pos1)}</div>
+      <div class="player-name">${p.name}${ageStr}${posBadgeHtml(p.pos1)}</div>
       <div class="d-flex align-items-center justify-content-between">
         <span class="badge bg-light text-dark">${skillLogoHtml(p.skill_grade)}</span>
         <span class="text-primary" style="font-size:14px;">출석</span>
@@ -1488,8 +1495,21 @@ function renderAttendance() {
     attList.appendChild(card);
   }
 
-  document.getElementById('count-all').textContent = (players.length - attIds.size) + '명';
-  document.getElementById('count-att').textContent = attIds.size;
+  document.getElementById('count-all').textContent = (players.length - attIds.size) + '명 미출석';
+
+  const restCount = DB.resting.filter(id => attIds.has(id)).length;
+  document.getElementById('count-att').textContent = restCount > 0
+    ? `${attIds.size}명 (휴식 ${restCount}명)`
+    : `${attIds.size}명`;
+
+  const liveBadge = document.getElementById('att-live-badge');
+  if (liveBadge) {
+    if (attIds.size > 0) {
+      liveBadge.innerHTML = `<span class="badge ms-2" style="background:#16a34a; color:#fff; font-size:12px;">⚽ ${attIds.size}명 출석</span>`;
+    } else {
+      liveBadge.innerHTML = '';
+    }
+  }
 }
 
 function toggleAttendance(playerId) {
@@ -1634,12 +1654,14 @@ function doScrimmage() {
 function showPreviewMode() {
   const header = document.getElementById('board-preview-header');
   header.style.display    = 'flex';
+  const normalControls = document.getElementById('board-normal-controls');
+  if (normalControls) normalControls.style.display = 'none';
 
   // 미리보기(경기 구성) 상태 → 안내 문구 타이머 재시작
   _boardIdleAttach();
 
   document.getElementById('preview-banner-text').textContent =
-    '⚠️ 미리보기 모드';
+    '⚠️ 미리보기 모드 — 선수 배치 후 확인(저장)을 눌러주세요';
   document.getElementById('preview-confirm-btn').textContent = '✅ 확인 (저장)';
   document.getElementById('preview-confirm-btn').disabled    = false;
   document.getElementById('preview-cancel-btn').style.display = '';
@@ -2071,15 +2093,42 @@ function calcFormation(teamSelector) {
   return `${cnt.DF}-${cnt.MF}-${cnt.FW}`;
 }
 
+function calcFormationFromAssignments(assignments) {
+  const cnt = { GK:0, DF:0, MF:0, FW:0 };
+  assignments.forEach(a => {
+    if (cnt[a.assigned_position] !== undefined) cnt[a.assigned_position]++;
+  });
+  return `${cnt.DF}-${cnt.MF}-${cnt.FW}`;
+}
+
 function updateFormationDisplay() {
-  const formation = calcFormation();
-  const titleEl   = document.getElementById('board-title');
+  const titleEl = document.getElementById('board-title');
   if (!titleEl) return;
-  const current = titleEl.textContent;
-  const updated = current.replace(/FORM:\d+-\d+-\d+/, 'FORM:' + formation);
-  titleEl.textContent = updated;
-  if (_previewMatch) {
-    _previewMatch.event_flavor = 'FORM:' + formation;
+
+  if (_previewMatch && _previewMatch.match_type === 'SCRIMMAGE') {
+    // 자체게임: 팀별 FORM 각각 계산
+    const blue  = _previewMatch.teams.find(t => t.team_label === 'BLUE');
+    const white = _previewMatch.teams.find(t => t.team_label === 'WHITE');
+    const blueForm  = blue  ? calcFormationFromAssignments(blue.assignments)  : '0-0-0';
+    const whiteForm = white ? calcFormationFromAssignments(white.assignments) : '0-0-0';
+    _previewMatch.event_flavor = 'FORM:' + blueForm;
+    titleEl.style.whiteSpace = 'normal';
+    titleEl.innerHTML =
+      `미리보기 · 자체게임 ` +
+      `<span style="color:#60a5fa; font-weight:900;">FORM ${blueForm}</span><br>` +
+      `<span style="color:#e5e7eb; font-weight:900; font-size:13px;">FORM ${whiteForm}</span>`;
+  } else {
+    // 일반 경기 또는 저장된 경기 보기
+    const formation = calcFormation();
+    const current   = titleEl.innerHTML;
+    if (/FORM:\d+-\d+-\d+/.test(current)) {
+      titleEl.innerHTML = current.replace(/FORM:\d+-\d+-\d+/, 'FORM:' + formation);
+    } else {
+      titleEl.innerHTML = current + ' FORM:' + formation;
+    }
+    if (_previewMatch) {
+      _previewMatch.event_flavor = 'FORM:' + formation;
+    }
   }
 }
 
@@ -2175,6 +2224,20 @@ function confirmBoard() {
   // 저장 완료 후 5초 뒤 오버레이 숨김
   _boardResetTimer();
 
+  // 3초 뒤 board-preview-header 자동 숨김, board-normal-controls 복원
+  setTimeout(() => {
+    const hdr = document.getElementById('board-preview-header');
+    if (hdr) {
+      hdr.style.display = 'none';
+      hdr.style.background   = '';
+      hdr.style.borderBottom = '';
+    }
+    document.getElementById('preview-banner-text').style.color = '';
+    document.getElementById('preview-cancel-btn').style.display = '';
+    const normalControls = document.getElementById('board-normal-controls');
+    if (normalControls) normalControls.style.display = 'flex';
+  }, 3000);
+
   // 저장 완료 → 안내 문구 즉시 숨기고 타이머 영구 중단
   _boardIdleDetach();
 }
@@ -2186,6 +2249,8 @@ function cancelPreview() {
   _previewType      = null;
   _previewConfirmed = false;
   document.getElementById('board-preview-header').style.display = 'none';
+  const normalControls2 = document.getElementById('board-normal-controls');
+  if (normalControls2) normalControls2.style.display = 'flex';
   const benchPanelEl2 = document.getElementById('bench-panel');
   const benchWrapEl2  = document.getElementById('bench-list-wrap');
   benchPanelEl2.style.display   = 'none';
@@ -2229,9 +2294,9 @@ function renderPlayers() {
   if (f === 'all') {
     rows = withAge.sort((a, b) => collator.compare(a.name, b.name));
   } else if (f === 'grade') {
-    const gOrder = { A:0, B:1, C:2 };
+    const gOrder = { A:0, B:1, C:2, D:3 };
     rows = withAge.sort((a, b) => {
-      const diff = (gOrder[a.skill_grade]??3) - (gOrder[b.skill_grade]??3);
+      const diff = (gOrder[a.skill_grade]??4) - (gOrder[b.skill_grade]??4);
       return diff !== 0 ? diff : collator.compare(a.name, b.name);
     });
   } else {
@@ -2241,7 +2306,24 @@ function renderPlayers() {
       .sort((a, b) => collator.compare(a.name, b.name));
   }
 
-  const gLabel = { A:'A등급 (NIKE)', B:'B등급 (adidas)', C:'C등급 (Mizuno)' };
+  const gLabel = { A:'A등급 (NIKE)', B:'B등급 (adidas)', C:'C등급 (Mizuno)', D:'D등급 (PUMA)' };
+  const gradeCount = { A:0, B:0, C:0, D:0 };
+  withAge.forEach(p => { if (gradeCount[p.skill_grade] !== undefined) gradeCount[p.skill_grade]++; });
+
+  // 등급 통계 뱃지 (인원 많은 순, 브랜드명만 표시)
+  const gradeBadgeInfo = [
+    { grade:'A', label:'NIKE',   bg:'#16a34a', count:gradeCount.A },
+    { grade:'B', label:'adidas', bg:'#111',    count:gradeCount.B },
+    { grade:'C', label:'Mizuno', bg:'#1a1a8c', count:gradeCount.C },
+    { grade:'D', label:'PUMA',   bg:'#c0392b', count:gradeCount.D },
+  ].filter(g => g.count > 0).sort((a, b) => b.count - a.count);
+  const badgesEl = document.getElementById('grade-stat-badges');
+  if (badgesEl) {
+    badgesEl.innerHTML = gradeBadgeInfo.map(g =>
+      `<span class="badge" style="background:${g.bg}; color:#fff; font-size:12px;">${g.label} ${g.count}명</span>`
+    ).join('');
+  }
+
   let html = '';
   let lastGrade = null;
 
@@ -2386,7 +2468,7 @@ function importExcel(event) {
         if (!name) continue;
 
         let grade = String(row[iGrade] || 'C').trim().toUpperCase();
-        if (!['A','B','C'].includes(grade)) grade = 'C';
+        if (!['A','B','C','D'].includes(grade)) grade = 'C';
 
         const pos1      = mapPos(row[iPos1]);
         const pos2      = mapPos(row[iPos2]);
@@ -2475,19 +2557,23 @@ function renderMatches() {
     return;
   }
   list.innerHTML = ms.map(m => {
-    const type     = m.match_type === 'SCRIMMAGE' ? '자체게임' : '경기';
+    const isScrimmageM = m.match_type === 'SCRIMMAGE';
+    const typeBadge    = isScrimmageM
+      ? '<span class="badge bg-warning text-dark ms-1" style="font-size:11px;">자체게임</span>'
+      : '<span class="badge bg-primary ms-1" style="font-size:11px;">경기</span>';
     const teamsHtml = (m.teams || []).map(t => {
       const names = t.assignments.map(a => {
         const p = players.find(x => x.id === a.player_id);
         return p ? `${p.name}(${a.assigned_position})` : '';
       }).filter(Boolean).join(', ');
-      return `<div class="mt-1"><strong>${t.team_label}</strong>: <span style="font-size:12px;color:#374151;">${names}</span></div>`;
+      const teamColor = t.team_label === 'BLUE' ? '#1d4ed8' : '#6b7280';
+      return `<div class="mt-1"><strong style="color:${teamColor};">${t.team_label}</strong>: <span style="font-size:12px;color:#374151;">${names}</span></div>`;
     }).join('');
 
     return `
       <div class="match-card">
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
-          <span class="fw-bold fs-5">${m.game_no}${type}
+          <span class="fw-bold fs-5">${m.game_no}번${typeBadge}
             <small class="text-muted fw-normal" style="font-size:13px;">${m.event_flavor || ''}</small>
           </span>
           <div class="d-flex gap-2">
@@ -2528,6 +2614,8 @@ function doResetDB() {
   _previewType      = null;
   _previewConfirmed = false;
   document.getElementById('board-preview-header').style.display = 'none';
+  const normalControlsR = document.getElementById('board-normal-controls');
+  if (normalControlsR) normalControlsR.style.display = 'flex';
   document.getElementById('bench-panel').style.display          = 'none';
   renderAttendance();
   renderMatches();
@@ -2610,12 +2698,16 @@ function showTab(name) {
   if (name === 'board') {
     document.body.classList.add('board-fullscreen');
     document.querySelector('.tab-nav').style.display = 'none';
+    document.getElementById('tab-attendance').style.display = 'none';
+    document.getElementById('tab-players').style.display    = 'none';
+    document.getElementById('tab-matches').style.display    = 'none';
     _boardShowOverlay();
     if (_previewMatch) showPreviewMode(); else refreshBoardSelect();
     _boardIdleAttach();
   } else {
     document.body.classList.remove('board-fullscreen');
     document.querySelector('.tab-nav').style.display = '';
+    TAB_NAMES.forEach(n => { document.getElementById('tab-' + n).style.display = ''; });
     _boardHideOverlay(true);
     document.getElementById('bench-panel').style.display = 'none';
     _boardIdleDetach();
