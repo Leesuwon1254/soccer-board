@@ -2727,7 +2727,7 @@ function showTab(name) {
     document.getElementById('tab-matches').style.display    = 'none';
     _boardShowOverlay();
     if (_previewMatch) showPreviewMode(); else refreshBoardSelect();
-    _boardIdleAttach();
+    if (_previewMatch) _boardIdleAttach();
   } else {
     document.body.classList.remove('board-fullscreen');
     document.querySelector('.tab-nav').style.display = '';
@@ -2826,11 +2826,13 @@ function _boardIdleHide() {
 function _boardIdleReset() {
   _boardIdleHide();
   clearTimeout(_boardIdleTimer);
-  _boardIdleTimer = setTimeout(_boardIdleShow, 3000);
+  if (_previewMatch) {
+    _boardIdleTimer = setTimeout(_boardIdleShow, 3000);
+  }
 }
 function _boardIdleAttach() {
   _boardIdleEvents.forEach(ev => document.addEventListener(ev, _boardIdleReset, { passive: true }));
-  _boardIdleReset();
+  if (_previewMatch) _boardIdleReset();
 }
 function _boardIdleDetach() {
   _boardIdleEvents.forEach(ev => document.removeEventListener(ev, _boardIdleReset));
@@ -3113,6 +3115,13 @@ const UPDATE_NOTES = {
       '✨ 업데이트 감지 시 변경내용 팝업 표시',
     ]
   },
+  'soccer-board-v3.3.3': {
+    version: 'v3.3.3',
+    notes: [
+      '🐛 보드 탭 진입 시 "선수 구성 완료" 메시지 오작동 수정',
+      '✅ 경기 생성(미리보기) 중일 때만 안내 메시지 표시',
+    ]
+  },
 };
 
 async function checkAndUpdate() {
@@ -3376,7 +3385,7 @@ function showPastReportDetail(dateKey) {
   position:fixed; bottom:10px; right:10px; z-index:99999;
   font-size:12px; color:rgba(150,150,150,0.8);
   pointer-events:none; user-select:none; letter-spacing:0.3px;
-">v3.3.2</div>
+">v3.3.3</div>
 
 </body>
 </html>
