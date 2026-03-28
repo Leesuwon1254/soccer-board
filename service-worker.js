@@ -1,5 +1,5 @@
 // ⚽ 축구 보드판 Service Worker
-const CACHE_NAME = 'soccer-board-v3.3.0';
+const CACHE_NAME = 'soccer-board-v3.3.2';
 const ASSETS = [
   './index.html',
   './soccer_board_v3.html',

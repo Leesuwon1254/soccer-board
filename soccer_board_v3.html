@@ -699,6 +699,22 @@
 </div>
 
 <!-- ══════════ 모달: 관리자 비밀번호 ══════════ -->
+<div id="update-modal" class="modal-overlay">
+  <div class="modal-box" style="max-width:420px;">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+      <span style="font-size:28px;">🆕</span>
+      <div>
+        <div class="modal-title mb-0" style="font-size:18px;">업데이트 완료!</div>
+        <div id="update-version-label" style="font-size:13px; color:#16a34a; font-weight:700;"></div>
+      </div>
+    </div>
+    <div id="update-notes" style="font-size:14px; line-height:1.8; background:#f8fafc; border-radius:10px; padding:12px 14px; margin-bottom:16px; max-height:300px; overflow-y:auto;"></div>
+    <div class="d-flex justify-content-end">
+      <button class="btn btn-success px-4" onclick="document.getElementById('update-modal').classList.remove('show')">확인</button>
+    </div>
+  </div>
+</div>
+
 <div id="admin-modal" class="modal-overlay">
   <div class="modal-box">
     <div class="modal-title">🔒 관리자 확인</div>
@@ -2031,6 +2047,14 @@ function benchTouchDrag(chip, playerId, e) {
     document.removeEventListener('touchend',  onEnd);
     document.body.removeChild(clone);
     const t     = ev.changedTouches[0];
+    const benchPanel = document.getElementById('bench-panel');
+    if (benchPanel) {
+      const bp = benchPanel.getBoundingClientRect();
+      if (t.clientX >= bp.left && t.clientX <= bp.right &&
+          t.clientY >= bp.top  && t.clientY <= bp.bottom) {
+        return;
+      }
+    }
     const pitch = document.getElementById('pitchWrap');
     if (!pitch) return;
     const r = pitch.getBoundingClientRect();
@@ -2888,7 +2912,6 @@ document.addEventListener('keydown', e => {
 
 // ================================================================
 // ===== 보드 탭 스와이프 제스처 =====
-// 위로 스와이프 → 출석 화면 이동
 // 아래로 스와이프 → 텍스트 힌트만 표시 (이동 없음)
 // 다른 탭에서는 동작하지 않음
 // ================================================================
@@ -2917,10 +2940,7 @@ document.addEventListener('keydown', e => {
     const startEl = document.elementFromPoint(_swipeStartX, _swipeStartY);
     if (startEl?.closest?.('.player-chip, #bench-panel')) return;
 
-    if (deltaY < 0) {
-      // 위로 스와이프 → 출석 화면
-      showTab('attendance');
-    } else {
+    if (deltaY > 0) {
       // 아래로 스와이프 → 힌트 텍스트만 표시
       const hint = document.getElementById('board-swipe-down-hint');
       if (!hint) return;
@@ -3062,30 +3082,66 @@ document.addEventListener('keydown', e => {
 <!-- ── Service Worker 등록 + 자동 업데이트 ── -->
 <script>
 // 앱 로드 시 서버의 SW 파일을 직접 fetch → CACHE_NAME 추출
-// → 현재 캐시 목록과 비교 → 불일치 시 모든 캐시 삭제 후 자동 새로고침
+// → 현재 캐시 목록과 비교 → 불일치 시 모든 캐시 삭제 후 팝업 표시 → 확인 시 새로고침
+const UPDATE_NOTES = {
+  'soccer-board-v3.3.0': {
+    version: 'v3.3.0',
+    notes: [
+      '🐛 보드 탭 깨짐 버그 수정',
+      '🐛 자체게임 포메이션 오류 수정',
+      '✨ 보드 상단바 레이아웃 개선',
+      '✨ 미리보기 배너 정리 (3초 후 자동 숨김)',
+      '✨ 출석 탭 라이브 뱃지 추가',
+      '✨ 회원 카드 나이 표시',
+      '✨ 오늘 출석에 휴식 인원 표시',
+      '✨ 경기목록 팀 색상/뱃지 개선',
+      '🆕 D등급 PUMA 추가',
+    ]
+  },
+  'soccer-board-v3.3.1': {
+    version: 'v3.3.1',
+    notes: [
+      '🎨 앱 아이콘 변경 (AI FootManager)',
+      '📱 앱 이름 변경: AI FootManager',
+    ]
+  },
+  'soccer-board-v3.3.2': {
+    version: 'v3.3.2',
+    notes: [
+      '🐛 위로 스와이프 출석이동 오작동 제거',
+      '🐛 대기명단 박스 안 드래그 후 운동장 이탈 버그 수정',
+      '✨ 업데이트 감지 시 변경내용 팝업 표시',
+    ]
+  },
+};
+
 async function checkAndUpdate() {
   if (!navigator.onLine) return;
-  // 이미 이번 세션에서 업데이트한 경우 무한루프 방지
   if (sessionStorage.getItem('sw_updated')) return;
   try {
-    // 캐시 무시하고 최신 SW 파일 가져오기
     const res  = await fetch('./service-worker.js?_=' + Date.now(), { cache: 'no-store' });
     const text = await res.text();
     const match = text.match(/const\s+CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
     if (!match) return;
     const serverCache = match[1];
-
     const cacheKeys = await caches.keys();
     if (!cacheKeys.includes(serverCache)) {
-      // 버전 불일치 → 플래그 저장 후 캐시 삭제 → 새로고침
-      console.log('🔄 새 버전 감지:', serverCache, '→ 캐시 초기화 후 새로고침');
       sessionStorage.setItem('sw_updated', '1');
       await Promise.all(cacheKeys.map(k => caches.delete(k)));
-      window.location.reload();
+      const info = UPDATE_NOTES[serverCache];
+      const verLabel = document.getElementById('update-version-label');
+      const notesEl  = document.getElementById('update-notes');
+      if (verLabel) verLabel.textContent = info ? info.version : serverCache;
+      if (notesEl) notesEl.innerHTML = info
+        ? info.notes.map(n => '<div style="margin-bottom:6px;">' + n + '</div>').join('')
+        : '<div>새로운 버전이 적용되었습니다.</div>';
+      document.getElementById('update-modal').classList.add('show');
+      document.querySelector('#update-modal .btn-success').onclick = () => {
+        document.getElementById('update-modal').classList.remove('show');
+        window.location.reload();
+      };
     }
-  } catch (e) {
-    // 네트워크 오류 시 무시 (오프라인 등)
-  }
+  } catch (e) {}
 }
 
 if ('serviceWorker' in navigator) {
@@ -3320,7 +3376,7 @@ function showPastReportDetail(dateKey) {
   position:fixed; bottom:10px; right:10px; z-index:99999;
   font-size:12px; color:rgba(150,150,150,0.8);
   pointer-events:none; user-select:none; letter-spacing:0.3px;
-">v3.2.3</div>
+">v3.3.0</div>
 
 </body>
 </html>
