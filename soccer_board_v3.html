@@ -1544,6 +1544,7 @@ function toggleAttendance(playerId) {
       const pl = DB.players.find(p => p.id === playerId);
       speakWelcome(pl ? pl.name : null);
       setTimeout(() => {
+        DB.resting = DB.resting.filter(id => id !== playerId);
         att.push({ id: DB.nextId(att), session_id: sess.id, player_id: playerId, checkin_time: new Date().toISOString() });
         DB.attendance = att;
         renderAttendance();
@@ -1553,6 +1554,7 @@ function toggleAttendance(playerId) {
         }, 50);
       }, 450);
     } else {
+      DB.resting = DB.resting.filter(id => id !== playerId);
       att.push({ id: DB.nextId(att), session_id: sess.id, player_id: playerId, checkin_time: new Date().toISOString() });
       DB.attendance = att;
       renderAttendance();
@@ -3122,6 +3124,12 @@ const UPDATE_NOTES = {
       '✅ 경기 생성(미리보기) 중일 때만 안내 메시지 표시',
     ]
   },
+  'soccer-board-v3.3.4': {
+    version: 'v3.3.4',
+    notes: [
+      '🐛 출석 추가 시 이전 세션의 휴식 상태가 유지되던 버그 수정 (DB.resting 미초기화)',
+    ]
+  },
 };
 
 async function checkAndUpdate() {
@@ -3385,7 +3393,7 @@ function showPastReportDetail(dateKey) {
   position:fixed; bottom:10px; right:10px; z-index:99999;
   font-size:12px; color:rgba(150,150,150,0.8);
   pointer-events:none; user-select:none; letter-spacing:0.3px;
-">v3.3.3</div>
+">v3.3.4</div>
 
 </body>
 </html>
