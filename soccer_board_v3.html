@@ -829,6 +829,41 @@
 <!-- ══════════ 스크립트 ══════════ -->
 <script>
 // ================================================================
+// ===== 버전 & 패치노트 =====
+// ================================================================
+const APP_VERSION = 'v3.3.4';
+
+const PATCH_NOTES = {
+  'v3.3.4': [
+    '🐛 출석 추가 시 이전 세션의 휴식 상태가 유지되던 버그 수정',
+  ],
+  'v3.3.3': [
+    '🐛 보드 탭 진입 시 "선수 구성 완료" 메시지 오작동 수정',
+    '✅ 경기 생성(미리보기) 중일 때만 안내 메시지 표시',
+  ],
+  'v3.3.2': [
+    '🐛 위로 스와이프 출석이동 오작동 제거',
+    '🐛 대기명단 박스 안 드래그 후 운동장 이탈 버그 수정',
+    '✨ 업데이트 감지 시 변경내용 팝업 표시',
+  ],
+  'v3.3.1': [
+    '🎨 앱 아이콘 변경 (AI FootManager)',
+    '📱 앱 이름 변경: AI FootManager',
+  ],
+  'v3.3.0': [
+    '🐛 보드 탭 깨짐 버그 수정',
+    '🐛 자체게임 포메이션 오류 수정',
+    '✨ 보드 상단바 레이아웃 개선',
+    '✨ 미리보기 배너 정리 (3초 후 자동 숨김)',
+    '✨ 출석 탭 라이브 뱃지 추가',
+    '✨ 회원 카드 나이 표시',
+    '✨ 오늘 출석에 휴식 인원 표시',
+    '✨ 경기목록 팀 색상/뱃지 개선',
+    '🆕 D등급 PUMA 추가',
+  ],
+};
+
+// ================================================================
 // ===== DB 레이어 (localStorage) =====
 // ================================================================
 const DB = {
@@ -3065,11 +3100,35 @@ document.addEventListener('keydown', e => {
 })();
 
 // ================================================================
+// ===== 버전 체크 & 패치노트 팝업 =====
+// ================================================================
+function checkVersionAndShowPatchNotes() {
+  const savedVersion = localStorage.getItem('sb_version');
+  if (savedVersion === APP_VERSION) return; // 이미 이 버전으로 확인함
+  const notes = PATCH_NOTES[APP_VERSION] || [];
+  const verLabel = document.getElementById('update-version-label');
+  const notesEl  = document.getElementById('update-notes');
+  if (verLabel) verLabel.textContent = APP_VERSION;
+  if (notesEl) notesEl.innerHTML = notes.length
+    ? notes.map(n => '<div style="margin-bottom:6px;">' + n + '</div>').join('')
+    : '<div>새로운 버전이 적용되었습니다.</div>';
+  const modal = document.getElementById('update-modal');
+  if (!modal) return;
+  modal.classList.add('show');
+  const confirmBtn = document.querySelector('#update-modal .btn-success');
+  if (confirmBtn) confirmBtn.onclick = () => {
+    modal.classList.remove('show');
+    localStorage.setItem('sb_version', APP_VERSION);
+  };
+}
+
+// ================================================================
 // ===== 초기화 =====
 // ================================================================
 (function init() {
   getOrCreateSession();
   renderAttendance();
+  checkVersionAndShowPatchNotes();
 
   // speechSynthesis voices 미리 로드 → 첫 출석 버튼 클릭 시 딜레이 방지
   if ('speechSynthesis' in window) {
@@ -3085,53 +3144,8 @@ document.addEventListener('keydown', e => {
 
 <!-- ── Service Worker 등록 + 자동 업데이트 ── -->
 <script>
-// 앱 로드 시 서버의 SW 파일을 직접 fetch → CACHE_NAME 추출
-// → 현재 캐시 목록과 비교 → 불일치 시 모든 캐시 삭제 후 팝업 표시 → 확인 시 새로고침
-const UPDATE_NOTES = {
-  'soccer-board-v3.3.0': {
-    version: 'v3.3.0',
-    notes: [
-      '🐛 보드 탭 깨짐 버그 수정',
-      '🐛 자체게임 포메이션 오류 수정',
-      '✨ 보드 상단바 레이아웃 개선',
-      '✨ 미리보기 배너 정리 (3초 후 자동 숨김)',
-      '✨ 출석 탭 라이브 뱃지 추가',
-      '✨ 회원 카드 나이 표시',
-      '✨ 오늘 출석에 휴식 인원 표시',
-      '✨ 경기목록 팀 색상/뱃지 개선',
-      '🆕 D등급 PUMA 추가',
-    ]
-  },
-  'soccer-board-v3.3.1': {
-    version: 'v3.3.1',
-    notes: [
-      '🎨 앱 아이콘 변경 (AI FootManager)',
-      '📱 앱 이름 변경: AI FootManager',
-    ]
-  },
-  'soccer-board-v3.3.2': {
-    version: 'v3.3.2',
-    notes: [
-      '🐛 위로 스와이프 출석이동 오작동 제거',
-      '🐛 대기명단 박스 안 드래그 후 운동장 이탈 버그 수정',
-      '✨ 업데이트 감지 시 변경내용 팝업 표시',
-    ]
-  },
-  'soccer-board-v3.3.3': {
-    version: 'v3.3.3',
-    notes: [
-      '🐛 보드 탭 진입 시 "선수 구성 완료" 메시지 오작동 수정',
-      '✅ 경기 생성(미리보기) 중일 때만 안내 메시지 표시',
-    ]
-  },
-  'soccer-board-v3.3.4': {
-    version: 'v3.3.4',
-    notes: [
-      '🐛 출석 추가 시 이전 세션의 휴식 상태가 유지되던 버그 수정 (DB.resting 미초기화)',
-    ]
-  },
-};
-
+// SW 파일의 CACHE_NAME을 서버에서 직접 fetch → 현재 캐시와 비교
+// → 불일치 시 캐시 전체 삭제 후 reload (팝업은 reload 후 checkVersionAndShowPatchNotes가 담당)
 async function checkAndUpdate() {
   if (!navigator.onLine) return;
   if (sessionStorage.getItem('sw_updated')) return;
@@ -3145,18 +3159,7 @@ async function checkAndUpdate() {
     if (!cacheKeys.includes(serverCache)) {
       sessionStorage.setItem('sw_updated', '1');
       await Promise.all(cacheKeys.map(k => caches.delete(k)));
-      const info = UPDATE_NOTES[serverCache];
-      const verLabel = document.getElementById('update-version-label');
-      const notesEl  = document.getElementById('update-notes');
-      if (verLabel) verLabel.textContent = info ? info.version : serverCache;
-      if (notesEl) notesEl.innerHTML = info
-        ? info.notes.map(n => '<div style="margin-bottom:6px;">' + n + '</div>').join('')
-        : '<div>새로운 버전이 적용되었습니다.</div>';
-      document.getElementById('update-modal').classList.add('show');
-      document.querySelector('#update-modal .btn-success').onclick = () => {
-        document.getElementById('update-modal').classList.remove('show');
-        window.location.reload();
-      };
+      window.location.reload();
     }
   } catch (e) {}
 }
