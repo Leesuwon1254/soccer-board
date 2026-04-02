@@ -522,7 +522,7 @@
                 onclick="requireAdmin('자체게임(11 vs 11)을 생성합니다.', doScrimmage)">자체게임 (11 vs 11)</button>
         <button class="btn btn-info text-white"
                 onclick="showTodayReport()">
-          📋 오늘의 리포트
+          📋 필드 리포트
         </button>
       </div>
     </div>
@@ -676,11 +676,11 @@
   </div>
 </div>
 
-<!-- ══════════ 모달: 오늘의 리포트 ══════════ -->
+<!-- ══════════ 모달: 필드 리포트 ══════════ -->
 <div id="report-modal" class="modal-overlay">
   <div class="modal-box" style="max-width:520px;">
     <div class="d-flex align-items-center justify-content-between mb-2">
-      <div class="modal-title mb-0">📋 오늘의 리포트</div>
+      <div class="modal-title mb-0">📋 필드 리포트</div>
       <button class="btn btn-sm btn-outline-secondary" onclick="showPastReports()">📁 지난경기</button>
     </div>
     <div id="report-today-view">
@@ -711,6 +711,23 @@
     <div id="update-notes" style="font-size:14px; line-height:1.8; background:#f8fafc; border-radius:10px; padding:12px 14px; margin-bottom:16px; max-height:300px; overflow-y:auto;"></div>
     <div class="d-flex justify-content-end">
       <button class="btn btn-success px-4" onclick="document.getElementById('update-modal').classList.remove('show')">확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 모달: 버전 업데이트 ══════════ -->
+<div id="version-modal" class="modal-overlay">
+  <div class="modal-box" style="max-width:420px;">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+      <span style="font-size:28px;">🆕</span>
+      <div>
+        <div class="modal-title mb-0" style="font-size:18px;">업데이트 완료!</div>
+        <div id="version-modal-label" style="font-size:13px; color:#16a34a; font-weight:700;"></div>
+      </div>
+    </div>
+    <div id="version-modal-notes" style="font-size:14px; line-height:1.8; background:#f8fafc; border-radius:10px; padding:12px 14px; margin-bottom:16px; max-height:300px; overflow-y:auto;"></div>
+    <div class="d-flex justify-content-end">
+      <button class="btn btn-success px-4" id="version-modal-confirm">확인</button>
     </div>
   </div>
 </div>
@@ -831,9 +848,15 @@
 // ================================================================
 // ===== 버전 & 패치노트 =====
 // ================================================================
-const APP_VERSION = 'v3.3.4';
+const APP_VERSION = 'v3.4.0';
 
 const PATCH_NOTES = {
+  'v3.4.0': [
+    '📋 "오늘의 리포트" → "필드 리포트" 명칭 변경',
+    '🐦 개근상 → 얼리버드(베스트11): 빠른 출석 상위 11명 선발',
+    '✨ 출석자 없을 때 리포트 모달에서 지난경기 자동 표시',
+    '🆕 버전 업데이트 팝업 개선',
+  ],
   'v3.3.4': [
     '🐛 출석 추가 시 이전 세션의 휴식 상태가 유지되던 버그 수정',
   ],
@@ -3103,22 +3126,22 @@ document.addEventListener('keydown', e => {
 // ===== 버전 체크 & 패치노트 팝업 =====
 // ================================================================
 function checkVersionAndShowPatchNotes() {
-  const savedVersion = localStorage.getItem('sb_version');
+  const savedVersion = localStorage.getItem('sb_last_version');
   if (savedVersion === APP_VERSION) return; // 이미 이 버전으로 확인함
   const notes = PATCH_NOTES[APP_VERSION] || [];
-  const verLabel = document.getElementById('update-version-label');
-  const notesEl  = document.getElementById('update-notes');
+  const verLabel = document.getElementById('version-modal-label');
+  const notesEl  = document.getElementById('version-modal-notes');
   if (verLabel) verLabel.textContent = APP_VERSION;
   if (notesEl) notesEl.innerHTML = notes.length
     ? notes.map(n => '<div style="margin-bottom:6px;">' + n + '</div>').join('')
     : '<div>새로운 버전이 적용되었습니다.</div>';
-  const modal = document.getElementById('update-modal');
+  const modal = document.getElementById('version-modal');
   if (!modal) return;
   modal.classList.add('show');
-  const confirmBtn = document.querySelector('#update-modal .btn-success');
+  const confirmBtn = document.getElementById('version-modal-confirm');
   if (confirmBtn) confirmBtn.onclick = () => {
     modal.classList.remove('show');
-    localStorage.setItem('sb_version', APP_VERSION);
+    localStorage.setItem('sb_last_version', APP_VERSION);
   };
 }
 
@@ -3233,7 +3256,8 @@ function showTodayReport() {
   }).filter(Boolean);
 
   if (attPlayers.length === 0) {
-    alert('오늘 출석한 선수가 없습니다.');
+    document.getElementById('report-modal').classList.add('show');
+    showPastReports();
     return;
   }
 
@@ -3275,8 +3299,15 @@ function showTodayReport() {
   if (restPlayers.length > 0)
     comments.push(`🛋 ${restPlayers.length}명(${restPlayers.map(p=>p.name).join(', ')})이 휴식을 취했습니다.`);
 
-  if (mvpPlayers.length > 0)
-    comments.push(`🥇 개근상: ${mvpPlayers.map(p=>p.name).join(', ')} (${maxCnt}경기 전 출전!)`);
+  const sortedByCheckin = [...att].sort((a, b) => new Date(a.checkin_time) - new Date(b.checkin_time));
+  const earlyBirdAtt = sortedByCheckin.slice(0, 11);
+  const earlyBirdPlayers = earlyBirdAtt.map(a => players.find(p => p.id === a.player_id)).filter(Boolean);
+  if (earlyBirdPlayers.length > 0) {
+    if (att.length >= 12)
+      comments.push(`🐦 얼리버드(베스트11): ${earlyBirdPlayers.map(p=>p.name).join(', ')} (빠른 출석 상위 11명!)`);
+    else
+      comments.push(`🐦 얼리버드(베스트11): ${earlyBirdPlayers.map(p=>p.name).join(', ')} (전원 베스트11 자동 선발!)`);
+  }
 
   gkPlayers.forEach(gk => {
     const c = playCount[gk.id] || 0;
@@ -3396,7 +3427,7 @@ function showPastReportDetail(dateKey) {
   position:fixed; bottom:10px; right:10px; z-index:99999;
   font-size:12px; color:rgba(150,150,150,0.8);
   pointer-events:none; user-select:none; letter-spacing:0.3px;
-">v3.3.4</div>
+">v3.4.0</div>
 
 </body>
 </html>
