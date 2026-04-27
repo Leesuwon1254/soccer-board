@@ -689,7 +689,9 @@
     <div id="report-past-view" style="display:none;">
       <div id="report-past-content" style="font-size:14px; line-height:1.8;"></div>
     </div>
-    <div class="d-flex justify-content-end mt-3">
+    <div class="d-flex justify-content-end mt-3 gap-2">
+      <button id="copy-report-btn" class="btn btn-outline-success"
+              onclick="copyReportToClipboard()">📋 밴드에 복사</button>
       <button class="btn btn-secondary"
               onclick="document.getElementById('report-modal').classList.remove('show')">
         닫기
@@ -848,9 +850,12 @@
 // ================================================================
 // ===== 버전 & 패치노트 =====
 // ================================================================
-const APP_VERSION = 'v3.4.0';
+const APP_VERSION = 'v3.5.0';
 
 const PATCH_NOTES = {
+  'v3.5.0': [
+    '🔗 필드 리포트 밴드 복사 버튼 추가',
+  ],
   'v3.4.0': [
     '📋 "오늘의 리포트" → "필드 리포트" 명칭 변경',
     '🐦 개근상 → 얼리버드(베스트11): 빠른 출석 상위 11명 선발',
@@ -3367,16 +3372,24 @@ function showTodayReport() {
   const dateKey = today.getFullYear().toString().slice(2)
     + String(today.getMonth()+1).padStart(2,'0')
     + String(today.getDate()).padStart(2,'0');
-  saveReportToStorage(dateKey, finalHtml);
+  const days = ['일','월','화','수','목','금','토'];
+  const dateStr = `${today.getFullYear()}.${String(today.getMonth()+1).padStart(2,'0')}.${String(today.getDate()).padStart(2,'0')} (${days[today.getDay()]})`;
+  _reportText = buildReportText({ dateStr, matches, attPlayers, earlyBirdPlayers, isAll11: att.length < 12, comments });
+  saveReportToStorage(dateKey, finalHtml, _reportText);
 
   showTodayReportView();
   document.getElementById('report-modal').classList.add('show');
 }
 
-function saveReportToStorage(dateKey, html) {
+function saveReportToStorage(dateKey, html, text) {
   let reports = JSON.parse(localStorage.getItem('sb_reports') || '{}');
   reports[dateKey] = html;
   localStorage.setItem('sb_reports', JSON.stringify(reports));
+  if (text !== undefined) {
+    let reportTexts = JSON.parse(localStorage.getItem('sb_report_texts') || '{}');
+    reportTexts[dateKey] = text;
+    localStorage.setItem('sb_report_texts', JSON.stringify(reportTexts));
+  }
 }
 
 function showTodayReportView() {
@@ -3416,9 +3429,71 @@ function showPastReportDetail(dateKey) {
   const m = dateKey.slice(2,4);
   const day = dateKey.slice(4,6);
 
+  const reportTexts = JSON.parse(localStorage.getItem('sb_report_texts') || '{}');
+  _reportText = reportTexts[dateKey] || '';
+
   document.getElementById('report-past-content').innerHTML =
     `<button class="btn btn-sm btn-link p-0 mb-2" onclick="showPastReports()">← 목록으로</button>
      <div style="font-weight:700; font-size:13px; color:#374151; margin-bottom:8px;">${y}-${m}-${day} 리포트</div>` + html;
+}
+
+// ── 리포트 밴드 복사 ────────────────────────────────────
+let _reportText = '';
+
+function buildReportText({ dateStr, matches, attPlayers, earlyBirdPlayers, isAll11, comments }) {
+  const line = '────────────────────';
+  let t = '';
+  t += line + '\n';
+  t += `📋 필드 리포트 | ${dateStr}\n`;
+  t += line + '\n';
+
+  if (matches.length > 0) {
+    t += `\n⚽ 경기 기록 (총 ${matches.length}경기)\n`;
+    matches.forEach(m => {
+      const typeLabel = m.match_type === 'SCRIMMAGE' ? '자체게임' : '경기';
+      const teamsStr = (m.teams || []).map(tm => {
+        const names = (tm.assignments || []).map(a => {
+          const p = DB.players.find(x => x.id === a.player_id);
+          return p ? p.name : '';
+        }).filter(Boolean).join(', ');
+        return `  ${tm.team_label}: ${names}`;
+      }).join('\n');
+      t += `${m.game_no}번 ${typeLabel}\n${teamsStr}\n`;
+    });
+    t += line + '\n';
+  }
+
+  if (attPlayers.length > 0) {
+    t += `\n👥 오늘 출석 (총 ${attPlayers.length}명)\n`;
+    t += attPlayers.map(p => p.name).join(', ') + '\n';
+    t += '\n' + line + '\n';
+  }
+
+  if (earlyBirdPlayers.length > 0) {
+    t += '\n🐦 얼리버드상 (베스트11)\n';
+    t += earlyBirdPlayers.map(p => p.name).join(', ') + '\n';
+    t += (isAll11 ? '(전원 베스트11 자동 선발)' : '(가장 먼저 출석한 11명)') + '\n';
+    t += '\n' + line + '\n';
+  }
+
+  if (comments.length > 0) {
+    t += '\n📊 오늘의 한마디\n';
+    comments.forEach(c => { t += `"${c}"\n`; });
+    t += line + '\n';
+  }
+
+  return t;
+}
+
+function copyReportToClipboard() {
+  if (!_reportText) { alert('복사할 리포트가 없습니다.'); return; }
+  const btn = document.getElementById('copy-report-btn');
+  navigator.clipboard.writeText(_reportText).then(() => {
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✅ 복사 완료!';
+    btn.disabled = true;
+    setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 1500);
+  }).catch(() => { alert('클립보드 복사에 실패했습니다.'); });
 }
 </script>
 
@@ -3427,7 +3502,7 @@ function showPastReportDetail(dateKey) {
   position:fixed; bottom:10px; right:10px; z-index:99999;
   font-size:12px; color:rgba(150,150,150,0.8);
   pointer-events:none; user-select:none; letter-spacing:0.3px;
-">v3.4.0</div>
+">v3.5.0</div>
 
 </body>
 </html>
